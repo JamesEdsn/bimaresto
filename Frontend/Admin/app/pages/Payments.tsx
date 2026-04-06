@@ -1,0 +1,365 @@
+import { useState } from 'react';
+import { Search, CreditCard, Smartphone, CheckCircle } from 'lucide-react';
+import { Payment } from '../../types/database';
+import { mockPayments } from '../../data/mockData';
+import { formatCurrency } from '../../utils/currency';
+
+export default function Payments() {
+  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<'card' | 'e-wallet'>('card');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'card' | 'e-wallet'>('all');
+
+  const filteredPayments = payments
+    .filter(payment => activeFilter === 'all' || payment.payment_method === activeFilter)
+    .filter(payment =>
+      payment.id.toString().includes(searchQuery) ||
+      payment.table?.table_number.includes(searchQuery)
+    );
+
+  const handleProcessPayment = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setIsProcessModalOpen(true);
+  };
+
+  const handleConfirmPayment = () => {
+    if (selectedPayment) {
+      setPayments(payments.map(p =>
+        p.id === selectedPayment.id
+          ? { ...p, payment_status: 'paid', payment_method: selectedMethod, paid_at: new Date() }
+          : p
+      ));
+      setIsProcessModalOpen(false);
+      setSelectedPayment(null);
+    }
+  };
+
+  const getMethodIcon = (method: string) => {
+    switch (method) {
+      case 'card':
+        return <CreditCard className="w-5 h-5 text-info" />;
+      case 'e-wallet':
+        return <Smartphone className="w-5 h-5 text-green-400" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'bg-green-500/20 text-green-400';
+      case 'pending':
+        return 'bg-yellow-500/20 text-yellow-400';
+      case 'failed':
+        return 'bg-red-500/20 text-red-400';
+      default:
+        return 'bg-gray-500/20 text-muted-foreground';
+    }
+  };
+
+  const totalCompleted = payments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total, 0);
+  const totalPending = payments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total, 0);
+
+  // Stats per method
+  const cardPayments = payments.filter(p => p.payment_method === 'card');
+  const ewalletPayments = payments.filter(p => p.payment_method === 'e-wallet');
+  
+  const cardTotal = cardPayments.reduce((sum, p) => sum + p.total, 0);
+  const ewalletTotal = ewalletPayments.reduce((sum, p) => sum + p.total, 0);
+  
+  const cardCompleted = cardPayments.filter(p => p.payment_status === 'paid').length;
+  const ewalletCompleted = ewalletPayments.filter(p => p.payment_status === 'paid').length;
+
+  return (
+    <div className="min-h-screen">
+      {/* Header */}
+      <div className="bg-card border-b border-border px-8 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-foreground text-[24px] font-bold">Payment Management</h1>
+            <p className="text-muted-foreground text-[14px] mt-1">Process and track payments by method</p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search payments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-muted-foreground w-64"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-8">
+        {/* Payment Stats - Always show ALL data */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Stat 1: Total All Payments */}
+          <div className="bg-primary/5 rounded-2xl p-6 border border-primary/20">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-muted-foreground text-[12px]">Total All Payments</p>
+                <p className="text-foreground text-[24px] font-bold">
+                  {formatCurrency(totalCompleted + totalPending)}
+                </p>
+              </div>
+            </div>
+            <p className="text-muted-foreground text-[12px]">
+              {payments.length} transactions
+            </p>
+          </div>
+
+          {/* Stat 2: Completed */}
+          <div className="bg-card rounded-2xl p-6 border border-border">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-muted-foreground text-[12px]">Completed</p>
+                <p className="text-foreground text-[24px] font-bold">
+                  {payments.filter(p => p.payment_status === 'paid').length}
+                </p>
+              </div>
+            </div>
+            <p className="text-muted-foreground text-[12px]">
+              Paid transactions
+            </p>
+          </div>
+
+          {/* Stat 3: Pending */}
+          <div className="bg-card rounded-2xl p-6 border border-border">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-muted-foreground text-[12px]">Pending</p>
+                <p className="text-foreground text-[24px] font-bold">
+                  {payments.filter(p => p.payment_status === 'pending').length}
+                </p>
+              </div>
+            </div>
+            <p className="text-muted-foreground text-[12px]">
+              Awaiting payment
+            </p>
+          </div>
+        </div>
+
+        {/* Filter Selector - Below Stats */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 bg-card p-2 rounded-xl border border-border inline-flex">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`px-4 py-2 rounded-lg transition-all text-[13px] font-medium ${
+                activeFilter === 'all'
+                  ? 'bg-primary text-primary-foreground shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All Payments ({payments.length})
+            </button>
+            
+            <button
+              onClick={() => setActiveFilter('card')}
+              className={`px-4 py-2 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
+                activeFilter === 'card'
+                  ? 'bg-info text-info-foreground shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              Card ({cardPayments.length})
+            </button>
+            
+            <button
+              onClick={() => setActiveFilter('e-wallet')}
+              className={`px-4 py-2 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
+                activeFilter === 'e-wallet'
+                  ? 'bg-brand text-brand-foreground shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              E-Wallet ({ewalletPayments.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Payments Table */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Payment ID
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Order ID
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Table
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Method
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Staff
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPayments.map((payment, index) => (
+                  <tr 
+                    key={payment.id} 
+                    className={`border-b border-border hover:bg-muted transition-colors ${
+                      index % 2 === 0 ? 'bg-card' : 'bg-muted/35'
+                    }`}
+                  >
+                    <td className="px-6 py-4 text-[14px] text-foreground font-medium">
+                      #{payment.id}
+                    </td>
+                    <td className="px-6 py-4 text-[14px] text-muted-foreground">
+                      -
+                    </td>
+                    <td className="px-6 py-4 text-[14px] text-muted-foreground">
+                      Table {payment.table?.table_number}
+                    </td>
+                    <td className="px-6 py-4 text-[16px] text-foreground font-bold">
+                      {formatCurrency(payment.total)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {getMethodIcon(payment.payment_method)}
+                        <span className="text-muted-foreground text-[14px] capitalize">{payment.payment_method}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 text-[12px] rounded-full capitalize ${getStatusColor(payment.payment_status)}`}>
+                        {payment.payment_status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[14px] text-muted-foreground">
+                      {payment.staff?.full_name || '-'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {payment.payment_status === 'pending' && (
+                        <button
+                          onClick={() => handleProcessPayment(payment)}
+                          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-[12px] font-medium hover:shadow-lg transition-all"
+                        >
+                          Process
+                        </button>
+                      )}
+                      {payment.payment_status === 'paid' && (
+                        <span className="text-muted-foreground text-[12px]">Completed</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Process Payment Modal */}
+      {isProcessModalOpen && selectedPayment && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl p-8 max-w-md w-full border border-border">
+            <h2 className="text-foreground text-[24px] font-bold mb-6">Process Payment</h2>
+            
+            {/* Payment Details */}
+            <div className="space-y-4 mb-6">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-muted-foreground text-[12px] mb-1">Order ID</p>
+                <p className="text-foreground text-[16px] font-medium">{selectedPayment.order_id}</p>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-muted-foreground text-[12px] mb-1">Table Number</p>
+                <p className="text-foreground text-[16px] font-medium">Table {selectedPayment.table?.table_number}</p>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-muted-foreground text-[12px] mb-1">Total Amount</p>
+                <p className="text-foreground text-[28px] font-bold">{formatCurrency(selectedPayment.total)}</p>
+              </div>
+            </div>
+
+            {/* Payment Method Selection */}
+            <div className="mb-6">
+              <label className="block text-muted-foreground text-[13px] font-medium mb-3">
+                Payment Method (Hanya Card & E-Wallet)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSelectedMethod('card')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    selectedMethod === 'card'
+                      ? 'border-blue-500 bg-blue-500/20'
+                      : 'border-border bg-muted hover:border-blue-500/50'
+                  }`}
+                >
+                  <CreditCard className={`w-8 h-8 mx-auto mb-2 ${
+                    selectedMethod === 'card' ? 'text-info' : 'text-info'
+                  }`} />
+                  <p className="text-foreground text-[13px] font-medium">Card</p>
+                  <p className="text-muted-foreground text-[11px] mt-1">Debit/Credit</p>
+                </button>
+
+                <button
+                  onClick={() => setSelectedMethod('e-wallet')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    selectedMethod === 'e-wallet'
+                      ? 'border-green-500 bg-green-500/20'
+                      : 'border-border bg-muted hover:border-green-500/50'
+                  }`}
+                >
+                  <Smartphone className={`w-8 h-8 mx-auto mb-2 ${
+                    selectedMethod === 'e-wallet' ? 'text-green-400' : 'text-green-400'
+                  }`} />
+                  <p className="text-foreground text-[13px] font-medium">E-Wallet</p>
+                  <p className="text-muted-foreground text-[11px] mt-1">OVO/GoPay/Dana</p>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsProcessModalOpen(false)}
+                className="flex-1 px-6 py-3 bg-secondary text-secondary-foreground rounded-lg border border-border hover:bg-secondary/80 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPayment}
+                className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:shadow-lg transition-all"
+              >
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
