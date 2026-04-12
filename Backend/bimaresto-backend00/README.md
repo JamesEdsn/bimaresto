@@ -6,12 +6,16 @@ REST API manajemen restoran kampus. Dibangun dengan **Fiber v2 + PostgreSQL + GO
 
 ```
 bimaresto-backend/
-├── main.go                  ← entry point, semua routing di sini
+├── main.go                  ← entry point
 ├── config/
 │   └── database.go          ← koneksi PostgreSQL + auto migrate
 ├── models/
 │   └── models.go            ← semua struct/tabel database
-├── handlers/
+├── routes/
+│   └── api.go            ← registrasi route dan Dependency Injection
+├── utils/
+│   └── response.go            ← standarisasi format respons API
+├── handlers/              ← Lapisan Handler (HTTP)
 │   ├── auth.go              ← login, register, refresh token, logout
 │   ├── menu.go              ← CRUD menu + kategori
 │   ├── table.go             ← lihat meja, update status
@@ -19,6 +23,8 @@ bimaresto-backend/
 │   ├── kitchen.go           ← tampilan kitchen, update status item
 │   ├── payment.go           ← generate bill, proses bayar
 │   └── report.go            ← laporan harian
+├── services/              ← Lapisan Service (Logika Bisnis)
+├── repositories/          ← Lapisan Repository (Database)
 ├── middleware/
 │   └── auth.go              ← JWT: generate, validasi, middleware role
 └── .env
@@ -66,6 +72,26 @@ go run main.go
 | DELETE | /api/menus/:id                | Manager+      |
 | GET    | /api/reports/daily            | Manager+      |
 | POST   | /api/sync                     | Manager+      |
+
+
+## Format Respons Standar
+Sukses:
+```json
+{
+    "success": true,
+    "message": "Pesan sukses",
+    "data": { ... }
+}
+```
+
+Gagal:
+```json
+{
+    "success": false,
+    "message": "Pesan error detail",
+    "data": null
+}
+```
 
 ## Auth Flow
 
