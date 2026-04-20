@@ -1,0 +1,25 @@
+info:
+  name: Process Payment
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{base_url}}/payments"
+  body:
+    type: json
+    data: |-
+      {
+        "order_id": 11,
+        "payment_method": "qris",
+        "amount_paid": 115000
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

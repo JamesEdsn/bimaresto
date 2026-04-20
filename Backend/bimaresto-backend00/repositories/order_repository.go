@@ -29,6 +29,9 @@ func (r *orderRepository) FindMenusByIDs(menuIDs []int) ([]models.Menu, error) {
 
 func (r *orderRepository) CreateOrderTx(order *models.Order) (*models.Order, error) {
 	err := r.db.Transaction(func(tx *gorm.DB) error {
+		items := order.Items
+		order.Items = nil
+
 		// Pessimistic Locking pada meja
 		var table models.Table
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&table, order.TableID).Error; err != nil {
@@ -49,6 +52,13 @@ func (r *orderRepository) CreateOrderTx(order *models.Order) (*models.Order, err
 		if result.RowsAffected == 0 {
 			return errors.New("order dengan client_ref_id ini sudah ada")
 		}
+		for i := range items {
+			items[i].OrderID = order.ID
+		}
+		if err := tx.Create(&items).Error; err != nil {
+			return err
+		}
+		order.Items = items
 		return nil
 	})
 

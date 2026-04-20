@@ -1,0 +1,72 @@
+info:
+  name: Login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/login"
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Super Admin",
+        "password": "admin123"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const data = res.getBody().data;
+          bru.setEnvVar("token", data.access_token);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: Login Success
+    request:
+      url: "{{base_url}}/login"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "full_name": "Super Admin",
+            "password": "admin123"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: date
+          value: Sun, 19 Apr 2026 08:38:58 GMT
+        - name: content-type
+          value: application/json
+        - name: content-length
+          value: "498"
+      body:
+        type: json
+        data: |-
+          {
+            "data": {
+              "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdGFmZl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzc2NTg4ODM4LCJpYXQiOjE3NzY1ODc5Mzh9.zuK3qCcPV8KCguRhGFKBktisRIT6R09_ZCD04UUNyJ4",
+              "expires_in": 900,
+              "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdGFmZl9pZCI6MSwicm9sZV9pZCI6MSwiZXhwIjoxNzc3MTkyNzM4LCJpYXQiOjE3NzY1ODc5Mzh9.RGC7bZo_1hDGvB6FlCKc0Pd01pVsdIxU_nB-hhtRIFE",
+              "staff": {
+                "full_name": "Super Admin",
+                "id": 1,
+                "role": "admin",
+                "role_id": 1
+              }
+            },
+            "message": "Login berhasil",
+            "success": true
+          }

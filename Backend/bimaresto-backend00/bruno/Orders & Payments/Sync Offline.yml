@@ -1,0 +1,111 @@
+info:
+  name: Sync Offline
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/sync"
+  body:
+    type: json
+    data: |-
+      {
+        "orders": [
+          {
+            "table_id": 2,
+            "source": "dine_in",
+            "notes": "Order saat mati lampu",
+            "client_ref_id": "offline-sync-001",
+            "items": [
+              {
+                "menu_id": 1,
+                "quantity": 1,
+                "notes": ""
+              }
+            ]
+          },
+          {
+            "table_id": 1,
+            "source": "takeaway",
+            "notes": "Bungkus plastik ganda",
+            "client_ref_id": "offline-sync-002",
+            "items": [
+              {
+                "menu_id": 2,
+                "quantity": 5,
+                "notes": "Jangan dipakein sedotan plastik"
+              }
+            ]
+          }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: Sync Offline Success
+    request:
+      url: "{{base_url}}/sync"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "orders": [
+              {
+                "table_id": 2,
+                "source": "dine_in",
+                "notes": "Order saat mati lampu",
+                "client_ref_id": "offline-sync-001",
+                "items": [
+                  {
+                    "menu_id": 1,
+                    "quantity": 1,
+                    "notes": ""
+                  }
+                ]
+              },
+              {
+                "table_id": 1,
+                "source": "takeaway",
+                "notes": "Bungkus plastik ganda",
+                "client_ref_id": "offline-sync-002",
+                "items": [
+                  {
+                    "menu_id": 2,
+                    "quantity": 5,
+                    "notes": "Jangan dipakein sedotan plastik"
+                  }
+                ]
+              }
+            ]
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: date
+          value: Sun, 19 Apr 2026 08:39:13 GMT
+        - name: content-type
+          value: application/json
+        - name: content-length
+          value: "100"
+      body:
+        type: json
+        data: |-
+          {
+            "data": {
+              "errors": null,
+              "skipped": 0,
+              "synced": 2
+            },
+            "message": "Sync offline data selesai",
+            "success": true
+          }

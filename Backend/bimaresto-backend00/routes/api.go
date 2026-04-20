@@ -38,6 +38,14 @@ func SetupRoutes(app *fiber.App) {
 	tableHandler := handlers.NewTableHandler(tableService)
 	reportHandler := handlers.NewReportHandler(reportService)
 
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": "Welcome to BimaResto API v2",
+			"status":  "Server is running gracefully 🚀",
+		})
+	})
+
 	// 4. Mendaftarkan Routes
 	api := app.Group("/api")
 

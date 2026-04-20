@@ -1,0 +1,38 @@
+info:
+  name: Create Order
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/orders"
+  body:
+    type: json
+    data: |-
+      {
+        "table_id": 1,
+        "source": "dine_in",
+        "notes": "Tolong cepat ya, pelanggannya buru-buru",
+        "client_ref_id": "order-req-abcd-1234",
+        "items": [
+          {
+            "menu_id": 1,
+            "quantity": 2,
+            "notes": "Pedas sedang"
+          },
+          {
+            "menu_id": 2,
+            "quantity": 2,
+            "notes": "Es dipisah"
+          }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

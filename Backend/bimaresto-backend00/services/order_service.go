@@ -8,9 +8,9 @@ import (
 )
 
 type OrderItemDTO struct {
-	MenuID   int
-	Quantity int
-	Notes    string
+	MenuID   int    `json:"menu_id"`
+	Quantity int    `json:"quantity"`
+	Notes    string `json:"notes"`
 }
 
 type OrderService interface {
