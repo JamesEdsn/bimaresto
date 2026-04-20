@@ -7,6 +7,7 @@ REST API manajemen restoran kampus. Dibangun dengan **Fiber v2 + PostgreSQL + GO
 ```
 bimaresto-backend/
 ├── main.go                  ← entry point
+├── bruno/                   ← Dokumentasi API
 ├── config/
 │   └── database.go          ← koneksi PostgreSQL + auto migrate
 ├── models/
@@ -23,10 +24,11 @@ bimaresto-backend/
 │   ├── kitchen.go           ← tampilan kitchen, update status item
 │   ├── payment.go           ← generate bill, proses bayar
 │   └── report.go            ← laporan harian
-├── services/              ← Lapisan Service (Logika Bisnis)
+├── services/              ← Lapisan Service (Logika Bisnis dan Unit Tests)
 ├── repositories/          ← Lapisan Repository (Database)
 ├── middleware/
 │   └── auth.go              ← JWT: generate, validasi, middleware role
+├── mocks/                   ← Tiruan Repository untuk keperluan Unit Testing
 └── .env
 ```
 
@@ -40,9 +42,31 @@ go mod tidy
 go run main.go
 ```
 
+## Testing
+Proyek ini menggunakan Automated Testing pada Service Layer menggunakan Mocking.
+
+```bash
+# Menjalankan seluruh test
+go test ./...
+
+# Menjalankan test dengan output detail
+go test ./services/... -v
+
+# Melihat persentase cakupan kode (Code Coverage)
+go test -cover ./services/...
+```
+
+## Dokumentasi API
+Dokumentasi API dapat diakses dan diuji langsung menggunakan aplikasi Bruno.
+Cara jalankan:
+1. Download dan buka aplikasi Bruno
+2. Pilih "Open Collection"
+3. Pilih folder bruno-collection di dalam proyek ini.
+4. pilih Environment Local di pojok kanan atas agar token JWT dan Base URL terisi secara otomatis setelah Login.
+
 ## Role & Akses
 
-| Role ID | Nama    | Akses                          |
+| Role ID | Nama    | Akses                         |
 |---------|---------|-------------------------------|
 | 1       | admin   | Semua endpoint                |
 | 2       | kasir   | Order, payment, table         |
