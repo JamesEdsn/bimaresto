@@ -87,6 +87,12 @@ Cara jalankan:
 | GET    | /api/tables                   | Login         |
 | POST   | /api/orders                   | Kasir+        |
 | GET    | /api/orders/:id/bill          | Kasir+        |
+| POST   | /api/orders/:id/items         | Kasir+        |
+| PUT    | /api/orders/:id/move-table    | Kasir+        |
+| POST   | /api/orders/:id/split-table   | Kasir+        |
+| POST   | /api/orders/:id/merge         | Kasir+        |
+| DELETE | /api/orders/:id               | Kasir+        |
+| DELETE | /api/orders/:id/items/:item_id| Kasir+        |
 | POST   | /api/payments                 | Kasir+        |
 | PATCH  | /api/tables/:id/status        | Kasir+        |
 | GET    | /api/kitchen/orders           | Kitchen+      |
