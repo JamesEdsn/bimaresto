@@ -25,3 +25,13 @@ func (m *PaymentRepositoryMock) ProcessPaymentTx(payment *models.Payment, order 
 	args := m.Called(payment, order, newStatus, freeTable)
 	return args.Error(0)
 }
+
+func (m *PaymentRepositoryMock) FindItemsByIDs(itemIDs []int) ([]models.OrderItem, error) {
+	args := m.Called(itemIDs)
+	return args.Get(0).([]models.OrderItem), args.Error(1)
+}
+
+func (m *PaymentRepositoryMock) ProcessItemPaymentTx(payment *models.Payment, order *models.Order, itemIDs []int, newOrderStatus string, freeTable bool) error {
+	args := m.Called(payment, order, itemIDs, newOrderStatus, freeTable)
+	return args.Error(0)
+}

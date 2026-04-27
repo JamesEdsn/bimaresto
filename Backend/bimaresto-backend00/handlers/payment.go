@@ -65,3 +65,26 @@ func (h *PaymentHandler) ProcessPayment(c *fiber.Ctx) error {
 
 	return utils.SuccessResponse(c, fiber.StatusOK, message, responseData)
 }
+func (h *PaymentHandler) ProcessItemPayment(c *fiber.Ctx) error {
+	var body struct {
+		OrderID       int    `json:"order_id"`
+		ItemIDs       []int  `json:"item_ids"` // ID item yang dicentang di UI
+		PaymentMethod string `json:"payment_method"`
+	}
+
+	if err := c.BodyParser(&body); err != nil {
+		return utils.ErrorResponse(c, 400, "Request tidak valid")
+	}
+
+	staffID := middleware.GetStaffID(c)
+	payment, remaining, err := h.service.ProcessItemSplit(body.OrderID, body.ItemIDs, staffID, body.PaymentMethod)
+
+	if err != nil {
+		return utils.ErrorResponse(c, 400, err.Error())
+	}
+
+	return utils.SuccessResponse(c, 200, "Pembayaran item berhasil", fiber.Map{
+		"amount_paid":       payment.AmountPaid,
+		"remaining_balance": remaining,
+	})
+}

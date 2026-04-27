@@ -82,3 +82,69 @@ func TestProcessPayment_Failed_InvalidMethod(t *testing.T) {
 	paymentRepo.AssertNotCalled(t, "FindOrderForPayment")
 	paymentRepo.AssertNotCalled(t, "ProcessPaymentTx")
 }
+
+// SKENARIO 4: SPLIT BILL PER ITEM (SUKSES BAYAR 1 ITEM)
+func TestProcessItemSplit_Success_Partial(t *testing.T) {
+	paymentRepo := new(mocks.PaymentRepositoryMock)
+	paymentService := NewPaymentService(paymentRepo)
+
+	// Data Order bohongan (Misal Grand Total: Rp 115.000)
+	mockOrder := models.Order{
+		ID:        1,
+		TableID:   5,
+		Total:     115000,
+		TotalPaid: 0,
+		Status:    "unpaid",
+	}
+
+	// Kasir memilih "Sate Ayam" (Harga Rp 30.000, Qty 1) yang belum dibayar
+	mockItems := []models.OrderItem{
+		{ID: 101, OrderID: 1, Quantity: 1, UnitPrice: 30000, IsPaid: false},
+	}
+
+	// Atur skenario database tiruan
+	paymentRepo.On("FindOrderForPayment", 1).Return(mockOrder, nil)
+	paymentRepo.On("FindItemsByIDs", []int{101}).Return(mockItems, nil)
+	// freeTable bernilai false karena ini baru bayar sebagian
+	paymentRepo.On("ProcessItemPaymentTx", mock.AnythingOfType("*models.Payment"), mock.AnythingOfType("*models.Order"), []int{101}, "partially_paid", false).Return(nil)
+
+	// Eksekusi fungsi: Pelanggan bayar pakai QRIS
+	payment, remaining, err := paymentService.ProcessItemSplit(1, []int{101}, 2, "qris")
+
+	// Validasi Matematika:
+	// Subtotal = 30.000
+	// Tax (10%) = 3.000
+	// Service (5%) = 1.500
+	// Total yang harus dibayar orang ini = 34.500
+	assert.Nil(t, err)
+	assert.Equal(t, float64(34500), payment.AmountPaid, "Perhitungan pajak per item salah!")
+	assert.Equal(t, float64(115000-34500), remaining, "Sisa tagihan salah!")
+}
+
+// SKENARIO 5: GAGAL KARENA ITEM SUDAH PERNAH DIBAYAR (DOUBLE PAYMENT)
+func TestProcessItemSplit_Failed_AlreadyPaid(t *testing.T) {
+	paymentRepo := new(mocks.PaymentRepositoryMock)
+	paymentService := NewPaymentService(paymentRepo)
+
+	mockOrder := models.Order{ID: 1, Total: 115000, TotalPaid: 34500}
+
+	// Skenario: Kasir tidak sengaja mencentang item yang sudah LUNAS (IsPaid: true)
+	mockItems := []models.OrderItem{
+		{ID: 101, OrderID: 1, Quantity: 1, UnitPrice: 30000, IsPaid: true},
+	}
+
+	paymentRepo.On("FindOrderForPayment", 1).Return(mockOrder, nil)
+	paymentRepo.On("FindItemsByIDs", []int{101}).Return(mockItems, nil)
+
+	// Eksekusi fungsi
+	payment, remaining, err := paymentService.ProcessItemSplit(1, []int{101}, 2, "cash")
+
+	// Validasi Hasil
+	assert.NotNil(t, err)
+	assert.Equal(t, "beberapa item sudah pernah dibayar", err.Error())
+	assert.Equal(t, float64(0), payment.AmountPaid)
+	assert.Equal(t, float64(0), remaining)
+
+	// PASTIKAN sistem memblokir dan tidak menyimpan apapun ke database
+	paymentRepo.AssertNotCalled(t, "ProcessItemPaymentTx")
+}

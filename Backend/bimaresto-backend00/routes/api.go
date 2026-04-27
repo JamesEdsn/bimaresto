@@ -65,8 +65,15 @@ func SetupRoutes(app *fiber.App) {
 
 	// Kasir + Manager + Admin (Role: 1, 2, 4)
 	api.Post("/orders", middleware.RequireRoles(1, 2, 4), orderHandler.CreateOrder)
+	api.Post("/orders/:id/merge", middleware.RequireAuth(), orderHandler.MergeOrders)
+	api.Post("/orders/:id/split-table", middleware.RequireAuth(), orderHandler.SplitTable)
+	api.Put("/orders/:id/move-table", middleware.RequireAuth(), orderHandler.MoveTable)
+	api.Delete("/orders/:id", middleware.RequireAuth(), orderHandler.CancelOrder)
+	api.Delete("/orders/:id/items/:item_id", middleware.RequireAuth(), orderHandler.CancelOrderItem)
+	api.Post("/orders/:id/items", middleware.RequireAuth(), orderHandler.AddItems)
 	api.Get("/orders/:id/bill", middleware.RequireRoles(1, 2, 4), paymentHandler.GenerateBill)
 	api.Post("/payments", middleware.RequireRoles(1, 2, 4), paymentHandler.ProcessPayment)
+	api.Post("/payments/items", middleware.RequireRoles(1, 2, 4), paymentHandler.ProcessItemPayment)
 	api.Patch("/tables/:id/status", middleware.RequireRoles(1, 2, 4), tableHandler.UpdateTableStatus)
 
 	// Kitchen + Admin (Role: 1, 3)

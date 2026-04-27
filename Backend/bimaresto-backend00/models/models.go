@@ -93,6 +93,7 @@ type OrderItem struct {
 	Subtotal  float64 `json:"subtotal"`
 	Notes     string  `json:"notes"`
 	Status    string  `gorm:"default:'pending'" json:"status"` // pending, processing, ready, served
+	IsPaid    bool    `gorm:"default:false" json:"is_paid"`
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
