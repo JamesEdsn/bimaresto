@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { toPng } from 'html-to-image';
 import { 
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -9,46 +9,8 @@ import {
   Users, Calendar, Download, FileText, Image as ImageIcon, ChevronDown
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
-
-// Sample data (converted to IDR)
-const salesData = [
-  { id: 'jan', month: 'Jan', sales: 187500000, orders: 145 },
-  { id: 'feb', month: 'Feb', sales: 237000000, orders: 178 },
-  { id: 'mar', month: 'Mar', sales: 213000000, orders: 162 },
-  { id: 'apr', month: 'Apr', sales: 283500000, orders: 201 },
-  { id: 'may', month: 'May', sales: 336000000, orders: 245 },
-  { id: 'jun', month: 'Jun', sales: 384000000, orders: 278 },
-];
-
-const categoryData = [
-  { id: 'main', name: 'Main Course', value: 45, color: '#f97316' },
-  { id: 'beverages', name: 'Beverages', value: 25, color: '#ec4899' },
-  { id: 'desserts', name: 'Desserts', value: 20, color: '#8b5cf6' },
-  { id: 'appetizers', name: 'Appetizers', value: 10, color: '#06b6d4' },
-];
-
-const topMenus = [
-  { id: 1, name: 'Grilled Chicken', sold: 234, revenue: 42120000 },
-  { id: 2, name: 'Caesar Salad', sold: 198, revenue: 26730000 },
-  { id: 3, name: 'Beef Burger', sold: 187, revenue: 33660000 },
-  { id: 4, name: 'Pasta Carbonara', sold: 156, revenue: 32760000 },
-  { id: 5, name: 'Iced Coffee', sold: 145, revenue: 8700000 },
-];
-
-const revenueByHour = [
-  { id: '9am', hour: '9AM', revenue: 12750000 },
-  { id: '10am', hour: '10AM', revenue: 18000000 },
-  { id: '11am', hour: '11AM', revenue: 31500000 },
-  { id: '12pm', hour: '12PM', revenue: 57000000 },
-  { id: '1pm', hour: '1PM', revenue: 63000000 },
-  { id: '2pm', hour: '2PM', revenue: 43500000 },
-  { id: '3pm', hour: '3PM', revenue: 24000000 },
-  { id: '4pm', hour: '4PM', revenue: 16500000 },
-  { id: '5pm', hour: '5PM', revenue: 36000000 },
-  { id: '6pm', hour: '6PM', revenue: 58500000 },
-  { id: '7pm', hour: '7PM', revenue: 67500000 },
-  { id: '8pm', hour: '8PM', revenue: 48000000 },
-];
+import { calculateAnalytics } from '../../utils/analyticsHelper';
+import { mockOrders, mockOrderItems, mockMenus, mockSplitBills } from '../../data/mockData';
 
 // Custom tooltip formatter
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -70,10 +32,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Analytics() {
-  const [startDate, setStartDate] = useState('2026-03-01');
-  const [endDate, setEndDate] = useState('2026-03-30');
+  const [startDate, setStartDate] = useState('2024-01-01');
+  const [endDate, setEndDate] = useState('2024-03-31');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
+
+  // Calculate analytics from real data
+  const metrics = useMemo(() => 
+    calculateAnalytics(mockOrders, mockOrderItems, mockMenus, startDate, endDate, mockSplitBills),
+    [startDate, endDate]
+  );
 
   const handleExportCSV = () => {
     // Prepare data for export
@@ -82,15 +50,19 @@ export default function Analytics() {
       generated: new Date().toLocaleString('id-ID'),
       restaurant: 'Bima Resto',
       summary: {
-        totalRevenue: 1641000000,
-        totalOrders: 1209,
-        avgOrderValue: 1357350,
-        totalCustomers: 856,
+        totalRevenue: metrics.totalRevenue,
+        totalOrders: metrics.totalOrders,
+        avgOrderValue: metrics.avgOrderValue,
+        totalCustomers: metrics.totalCustomers,
+        totalSplitBills: metrics.totalSplitBills,
+        totalSplitAmount: metrics.totalSplitAmount,
+        avgSplitAmount: metrics.avgSplitAmount,
       },
-      salesByMonth: salesData,
-      topSellingItems: topMenus,
-      categoryDistribution: categoryData,
-      revenueByHour: revenueByHour,
+      salesByMonth: metrics.salesByMonth,
+      topSellingItems: metrics.topMenus,
+      categoryDistribution: metrics.categoryData,
+      revenueByHour: metrics.revenueByHour,
+      splitBillMethods: metrics.splitBillMethods,
     };
 
     // Convert to CSV format
@@ -102,18 +74,33 @@ export default function Analytics() {
     csv += `Total Revenue,${formatCurrency(reportData.summary.totalRevenue)}\n`;
     csv += `Total Orders,${reportData.summary.totalOrders}\n`;
     csv += `Average Order Value,${formatCurrency(reportData.summary.avgOrderValue)}\n`;
-    csv += `Total Customers,${reportData.summary.totalCustomers}\n\n`;
+    csv += `Total Customers,${reportData.summary.totalCustomers}\n`;
+    csv += `Total Split Bills,${reportData.summary.totalSplitBills}\n`;
+    csv += `Total Split Amount,${formatCurrency(reportData.summary.totalSplitAmount)}\n`;
+    csv += `Average Split Amount,${formatCurrency(reportData.summary.avgSplitAmount)}\n\n`;
     
     csv += 'SALES BY MONTH\n';
     csv += 'Month,Sales (Rp),Orders\n';
-    salesData.forEach(item => {
+    metrics.salesByMonth.forEach(item => {
       csv += `${item.month},${item.sales},${item.orders}\n`;
     });
     
     csv += '\nTOP SELLING ITEMS\n';
     csv += 'Item,Sold,Revenue (Rp)\n';
-    topMenus.forEach(item => {
+    metrics.topMenus.forEach(item => {
       csv += `${item.name},${item.sold},${item.revenue}\n`;
+    });
+
+    csv += '\nSALES BY CATEGORY\n';
+    csv += 'Category,Items Sold,Revenue (Rp)\n';
+    metrics.categoryData.forEach(item => {
+      csv += `${item.name},${item.value},${item.revenue}\n`;
+    });
+
+    csv += '\nSPLIT BILL PAYMENT METHODS\n';
+    csv += 'Method,Count,Amount (Rp)\n';
+    metrics.splitBillMethods.forEach(item => {
+      csv += `${item.method},${item.count},${item.amount}\n`;
     });
 
     // Create download link
@@ -133,21 +120,17 @@ export default function Analytics() {
     if (!chartsRef.current) return;
 
     try {
-      // Wait for any animations to complete and ensure charts are rendered
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Use html-to-image which supports oklch colors and SVG
       const dataUrl = await toPng(chartsRef.current, {
         cacheBust: true,
         backgroundColor: '#141422',
         pixelRatio: 2,
         filter: (node) => {
-          // Exclude elements that might cause issues
           return !node.classList?.contains('no-export');
         },
       });
 
-      // Download the image
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = `bima-resto-analytics-${new Date().toISOString().split('T')[0]}.png`;
@@ -247,12 +230,12 @@ export default function Analytics() {
               </div>
               <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
                 <TrendingUp className="w-4 h-4" />
-                <span>+12.5%</span>
+                <span>Live</span>
               </div>
             </div>
             <p className="text-slate-500 text-[12px] mb-1">Total Revenue</p>
-            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(1641000000)}</p>
-            <p className="text-slate-500 text-[11px] mt-2">vs last period: {formatCurrency(1458000000)}</p>
+            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.totalRevenue)}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Period: {startDate} to {endDate}</p>
           </div>
 
           {/* Total Orders */}
@@ -263,12 +246,12 @@ export default function Analytics() {
               </div>
               <div className="flex items-center gap-1 text-slate-500 text-[12px]">
                 <TrendingDown className="w-4 h-4" />
-                <span>-2.8%</span>
+                <span>Live</span>
               </div>
             </div>
             <p className="text-slate-500 text-[12px] mb-1">Total Orders</p>
-            <p className="text-slate-950 text-[24px] font-bold">1,209</p>
-            <p className="text-slate-500 text-[11px] mt-2">Order volume is up this month</p>
+            <p className="text-slate-950 text-[24px] font-bold">{metrics.totalOrders}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Transactions synced</p>
           </div>
 
           {/* Average Order Value */}
@@ -279,12 +262,12 @@ export default function Analytics() {
               </div>
               <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
                 <TrendingUp className="w-4 h-4" />
-                <span>+4.2%</span>
+                <span>Live</span>
               </div>
             </div>
             <p className="text-slate-500 text-[12px] mb-1">Average Order Value</p>
-            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(1357350)}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Healthy spending per order</p>
+            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.avgOrderValue)}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Per transaction</p>
           </div>
 
           {/* Total Customers */}
@@ -295,12 +278,63 @@ export default function Analytics() {
               </div>
               <div className="flex items-center gap-1 text-rose-500 text-[12px]">
                 <TrendingDown className="w-4 h-4" />
-                <span>-2.3%</span>
+                <span>Live</span>
               </div>
             </div>
-            <p className="text-slate-500 text-[12px] mb-1">Total Customers</p>
-            <p className="text-slate-950 text-[28px] font-bold">856</p>
-            <p className="text-slate-500 text-[11px] mt-2">vs last period: 876</p>
+            <p className="text-slate-500 text-[12px] mb-1">Total Unique Tables</p>
+            <p className="text-slate-950 text-[28px] font-bold">{metrics.totalCustomers}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Unique table orders</p>
+          </div>
+        </div>
+
+        {/* Split Bill KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Total Split Bills */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
+                <TrendingUp className="w-4 h-4" />
+                <span>Live</span>
+              </div>
+            </div>
+            <p className="text-slate-500 text-[12px] mb-1">Total Split Bills</p>
+            <p className="text-slate-950 text-[24px] font-bold">{metrics.totalSplitBills}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Transactions split</p>
+          </div>
+
+          {/* Total Split Amount */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
+                <TrendingUp className="w-4 h-4" />
+                <span>Live</span>
+              </div>
+            </div>
+            <p className="text-slate-500 text-[12px] mb-1">Total Split Amount</p>
+            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.totalSplitAmount)}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Split transactions value</p>
+          </div>
+
+          {/* Average Split Amount */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
+                <TrendingUp className="w-4 h-4" />
+                <span>Live</span>
+              </div>
+            </div>
+            <p className="text-slate-500 text-[12px] mb-1">Average Split Amount</p>
+            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.avgSplitAmount)}</p>
+            <p className="text-slate-500 text-[11px] mt-2">Per split transaction</p>
           </div>
         </div>
 
@@ -309,19 +343,17 @@ export default function Analytics() {
           {/* Sales Trend */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <h3 className="text-slate-950 text-[18px] font-bold mb-6">Sales Trend</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={salesData}>
-                <CartesianGrid key="grid-sales" strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis key="xaxis-sales" dataKey="month" stroke="#64748b" />
+            <ResponsiveContainer width="100%" height={420}>
+              <LineChart data={metrics.salesByMonth} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" stroke="#64748b" />
                 <YAxis 
-                  key="yaxis-sales"
                   stroke="#64748b"
                   tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
                 />
-                <Tooltip key="tooltip-sales" content={<CustomTooltip />} />
-                <Legend key="legend-sales" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
                 <Line 
-                  key="sales-line"
                   type="monotone" 
                   dataKey="sales" 
                   stroke="#f97316" 
@@ -336,26 +368,52 @@ export default function Analytics() {
           {/* Category Distribution */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <h3 className="text-slate-950 text-[18px] font-bold mb-6">Sales by Category</h3>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={380}>
               <PieChart>
                 <Pie
-                  key="category-pie"
-                  data={categoryData}
+                  data={metrics.categoryData}
                   cx="50%"
                   cy="45%"
-                  outerRadius={90}
+                  outerRadius={110}
                   fill="#8884d8"
-                  dataKey="value"
+                  dataKey="revenue"
                   nameKey="name"
                 >
-                  {categoryData.map((entry) => (
+                  {metrics.categoryData.map((entry) => (
                     <Cell key={entry.id} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip key="tooltip-category" content={<CustomTooltip />} />
-                <Legend key="legend-category" verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                          <p className="text-slate-950 text-[13px] font-bold mb-1">{data.name}</p>
+                          <p className="text-slate-600 text-[12px]">Revenue: {formatCurrency(data.revenue)}</p>
+                          <p className="text-slate-600 text-[12px]">Items Sold: {data.value}</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
+
+            {/* Custom legend placed inside the same card, centered and wrapped */}
+            <div className="mt-6 flex flex-wrap justify-center gap-4 px-4">
+              {metrics.categoryData.map((c) => {
+                const millions = (c.revenue / 1000000);
+                const label = `${c.name}: Rp ${millions % 1 === 0 ? `${millions.toFixed(0)}M` : `${millions.toFixed(1)}M`}`;
+                return (
+                  <div key={c.id} className="flex items-center gap-3">
+                    <span className="w-4 h-4 rounded-sm" style={{ background: c.color }} />
+                    <span className="text-[15px] font-medium text-slate-800">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -364,24 +422,22 @@ export default function Analytics() {
           {/* Revenue by Hour */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <h3 className="text-slate-950 text-[18px] font-bold mb-6">Revenue by Hour</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueByHour}>
+            <ResponsiveContainer width="100%" height={500}>
+              <BarChart data={metrics.revenueByHour}>
                 <defs>
                   <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#f97316" stopOpacity={1} />
                     <stop offset="100%" stopColor="#ec4899" stopOpacity={0.8} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid key="grid-revenue" strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis key="xaxis-revenue" dataKey="hour" stroke="#64748b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="hour" stroke="#64748b" />
                 <YAxis 
-                  key="yaxis-revenue"
                   stroke="#64748b"
                   tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
                 />
-                <Tooltip key="tooltip-revenue" content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} />
                 <Bar 
-                  key="revenue-bar"
                   dataKey="revenue" 
                   fill="url(#colorGradient)" 
                   radius={[8, 8, 0, 0]}
@@ -395,7 +451,7 @@ export default function Analytics() {
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <h3 className="text-slate-950 text-[18px] font-bold mb-6">Top Selling Items</h3>
             <div className="space-y-4">
-              {topMenus.map((menu, index) => (
+              {metrics.topMenus.map((menu, index) => (
                 <div key={index} className="flex items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold text-[14px]">
@@ -413,25 +469,49 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* Orders by Month */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
-          <h3 className="text-slate-950 text-[18px] font-bold mb-6">Orders Performance</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={salesData}>
-              <CartesianGrid key="grid-orders" strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis key="xaxis-orders" dataKey="month" stroke="#64748b" />
-              <YAxis key="yaxis-orders" stroke="#64748b" />
-              <Tooltip key="tooltip-orders" content={<CustomTooltip />} />
-              <Legend key="legend-orders" />
-              <Bar 
-                key="orders-bar"
-                dataKey="orders" 
-                fill="#3b82f6" 
-                radius={[8, 8, 0, 0]} 
-                name="Total Orders" 
-              />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Charts Row 3 - Split Bill Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Split Bill Payment Methods */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
+            <h3 className="text-slate-950 text-[18px] font-bold mb-6">Split Bill Payment Methods</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={metrics.splitBillMethods}>
+                <defs>
+                  <linearGradient id="splitBillGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="method" stroke="#64748b" />
+                <YAxis stroke="#64748b" />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="amount" 
+                  fill="url(#splitBillGradient)" 
+                  radius={[8, 8, 0, 0]}
+                  name="Amount (Rp)"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Split Bill Summary */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
+            <h3 className="text-slate-950 text-[18px] font-bold mb-6">Split Bill Breakdown</h3>
+            <div className="space-y-4">
+              {metrics.splitBillMethods.map((method, index) => (
+                <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 shadow-md hover:shadow-lg transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-slate-900 text-[14px] font-medium">{method.method}</p>
+                    <p className="text-indigo-600 text-[12px] font-bold">{method.count} splits</p>
+                  </div>
+                  <p className="text-slate-600 text-[13px]">Total: {formatCurrency(method.amount)}</p>
+                  <p className="text-slate-500 text-[11px] mt-1">Avg: {formatCurrency(Math.round(method.amount / method.count))}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

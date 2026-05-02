@@ -12,6 +12,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import sidebarLogo from '../../assets/image.png';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -46,20 +47,15 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[250px] bg-white flex flex-col border-r border-orange-100 shadow-lg z-30">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-orange-100">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-sm font-bold text-white shadow-sm">
-            B
-          </div>
-          <div>
-            <h1 className="text-[17px] font-semibold leading-tight text-orange-700 tracking-tight">
-              Bima Resto
-            </h1>
-            <p className="text-slate-500 text-[11px] mt-0.5 leading-tight">
-              Restaurant POS
-            </p>
-          </div>
-        </div>
+      <div className="px-2 py-4 border-b border-orange-100 flex flex-col items-center gap-3">
+        <img
+          src={sidebarLogo}
+          alt="Bima Resto Logo"
+          className="h-14 w-full object-contain"
+        />
+        <h1 className="text-[16px] font-bold text-orange-700 leading-tight">
+          Bima Resto
+        </h1>
       </div>
 
       {/* User Profile */}

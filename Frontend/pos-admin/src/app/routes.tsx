@@ -13,6 +13,19 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import POSDashboard from "./pages/pos/POSDashboard";
 
+const dashboardChildren = [
+  { index: true, Component: Dashboard },
+  { path: "analytics", Component: Analytics },
+  { path: "orders", Component: Orders },
+  { path: "tables", Component: Tables },
+  { path: "menus", Component: MenusPage },
+  { path: "categories", Component: Categories },
+  { path: "promos", Component: Promos },
+  { path: "staff", Component: Staff },
+  { path: "payments", Component: Payments },
+  { path: "*", Component: NotFound },
+];
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -21,34 +34,12 @@ export const router = createBrowserRouter([
   {
     path: "/admin",
     Component: Layout,
-    children: [
-      { index: true, Component: Dashboard },
-      { path: "analytics", Component: Analytics },
-      { path: "orders", Component: Orders },
-      { path: "tables", Component: Tables },
-      { path: "menus", Component: MenusPage },
-      { path: "categories", Component: Categories },
-      { path: "promos", Component: Promos },
-      { path: "staff", Component: Staff },
-      { path: "payments", Component: Payments },
-      { path: "*", Component: NotFound },
-    ],
+    children: dashboardChildren,
   },
   {
     path: "/dashboard",
     Component: Layout,
-    children: [
-      { index: true, Component: Dashboard },
-      { path: "analytics", Component: Analytics },
-      { path: "orders", Component: Orders },
-      { path: "tables", Component: Tables },
-      { path: "menus", Component: MenusPage },
-      { path: "categories", Component: Categories },
-      { path: "promos", Component: Promos },
-      { path: "staff", Component: Staff },
-      { path: "payments", Component: Payments },
-      { path: "*", Component: NotFound },
-    ],
+    children: dashboardChildren,
   },
   {
     path: "/pos",

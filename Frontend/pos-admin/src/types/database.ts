@@ -83,6 +83,18 @@ export type Payment = {
   staff?: Staff;
 };
 
+export type SplitBill = {
+  id: number;
+  payment_id: number;
+  person_name: string;
+  amount: number;
+  payment_method: 'card' | 'e-wallet' | 'cash';
+  payment_status: 'pending' | 'paid' | 'failed';
+  paid_at: Date | null;
+  created_at: Date;
+  payment?: Payment;
+};
+
 export type Promo = {
   id: number;
   name: string;

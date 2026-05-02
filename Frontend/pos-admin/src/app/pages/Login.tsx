@@ -1,19 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
-
-// Placeholder for the logo as described
-// Pradita University Logo from brandfetch.com/pradita.ac.id
-const BimaRestoLogo = () => (
-  <svg
-    width="64"
-    height="64"
-    viewBox="0 0 1024 1024"
-    xmlns="http://www.w3.org/2000/svg"
-    className="mb-4 mx-auto rounded-xl shadow-lg shadow-red-500/30"
-    >
-  </svg>
-);
+import campusImage from '../../assets/kampus.png';
+import praditaLogo from '../../assets/image.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -50,17 +39,27 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex font-sans">
-      {/* Left Panel - Atmospheric Photo Placeholder */}
-      <div className="w-1/2 hidden lg:block bg-gradient-to-br from-stone-800 to-amber-950" />
+      {/* Left Panel - Campus Image */}
+      <div className="w-1/2 hidden lg:block relative overflow-hidden">
+        <img
+          src={campusImage}
+          alt="Pradita University Campus"
+          className="h-full w-full object-cover"
+        />
+      </div>
 
       {/* Right Panel - Login Form */}
-      <div className="w-full lg:w-1/2 bg-[#FEFDF8] flex items-center justify-center p-8 sm:p-12">
+      <div className="w-full lg:w-1/2 bg-[#F5F5F7] flex items-center justify-center p-8 sm:p-12">
         <div className="w-full max-w-md text-center">
-          
+
           {/* Logo & Header */}
-          <BimaRestoLogo />
-          <h1 className="font-serif text-4xl font-bold text-gray-800">UNIVERSITAS PRADITA</h1>
-          <p className="text-gray-600 mt-1 font-medium">Sistem Informasi Akademik</p>
+          <img
+            src={praditaLogo}
+            alt="Bima Resto"
+            className="mx-auto mb-5 h-24 w-auto object-contain"
+          />
+          <h1 className="text-4xl font-extrabold tracking-wide text-gray-800">BIMA RESTO</h1>
+          <p className="mt-2 text-lg font-medium text-gray-600">Restaurant Management</p>
 
           <form onSubmit={handleLogin} className="mt-16 space-y-6 text-left">
             {/* Email */}

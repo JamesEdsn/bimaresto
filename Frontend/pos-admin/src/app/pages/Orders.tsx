@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Eye, Calendar } from 'lucide-react';
+import { Eye, Calendar, Split } from 'lucide-react';
 import { Order } from '../../types/database';
 import { formatCurrency } from '../../utils/currency';
 import { useAppContext } from '../../contexts/AppContext';
+import { mockSplitBills } from '../../data/mockData';
 
 export default function Orders() {
   const { orders, orderItems, updateOrderStatus } = useAppContext();
@@ -48,6 +49,14 @@ export default function Orders() {
       cancelled: 'bg-rose-200 text-rose-900 border border-rose-300',
     };
     return styles[status as keyof typeof styles] || 'bg-slate-100 text-slate-700 border border-slate-200';
+  };
+
+  const hasSplitBill = (orderId: number) => {
+    return mockSplitBills.some(sb => sb.payment_id === orderId);
+  };
+
+  const getSplitBillsForOrder = (orderId: number) => {
+    return mockSplitBills.filter(sb => sb.payment_id === orderId);
   };
 
   const orderItemsForOrder = (orderId: number) => {
@@ -219,6 +228,9 @@ export default function Orders() {
                     Date & Time
                   </th>
                   <th className="px-6 py-4 text-left text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Split Bill
+                  </th>
+                  <th className="px-6 py-4 text-left text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -252,6 +264,18 @@ export default function Orders() {
                       {order.created_at.toLocaleString('id-ID')}
                     </td>
                     <td className="px-6 py-4">
+                      {hasSplitBill(order.id) ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 text-[12px] rounded-full bg-indigo-200 text-indigo-900 border border-indigo-300 font-medium">
+                          <Split className="w-3 h-3" />
+                          Ya
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 text-[12px] rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium">
+                          Tidak
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button 
                           onClick={() => handleViewOrder(order)}
@@ -265,7 +289,7 @@ export default function Orders() {
                 ))}
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-12">
+                    <td colSpan={8} className="text-center py-12">
                       <p className="text-gray-400 text-[14px]">
                         No orders found for the selected date range.
                       </p>
@@ -329,6 +353,54 @@ export default function Orders() {
                 ))}
               </div>
             </div>
+
+            {/* Split Bill Details */}
+            {hasSplitBill(selectedOrder.id) && (
+              <div className="mb-6">
+                <h3 className="text-slate-950 text-[18px] font-bold mb-4 flex items-center gap-2">
+                  <Split className="w-5 h-5 text-indigo-600" />
+                  Split Bill Details
+                </h3>
+                <div className="space-y-3">
+                  {getSplitBillsForOrder(selectedOrder.id).map((split, index) => (
+                    <div key={split.id} className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-slate-950 text-[14px] font-bold">{split.person_name}</p>
+                          <p className="text-slate-500 text-[12px]">Person #{index + 1}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-indigo-600 text-[16px] font-bold">{formatCurrency(split.amount)}</p>
+                          <span className={`px-2 py-1 text-[10px] rounded-full capitalize ${
+                            split.payment_status === 'paid' 
+                              ? 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                              : split.payment_status === 'pending'
+                              ? 'bg-amber-200 text-amber-900 border border-amber-300'
+                              : 'bg-rose-200 text-rose-900 border border-rose-300'
+                          }`}>
+                            {split.payment_status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-[12px] text-slate-600 mt-2">
+                        <span className="capitalize">Method: {split.payment_method === 'e-wallet' ? 'E-Wallet' : split.payment_method === 'card' ? 'Card' : 'Cash'}</span>
+                        {split.paid_at && (
+                          <span>Paid: {new Date(split.paid_at).toLocaleString('id-ID')}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="p-4 bg-slate-100 rounded-lg border border-slate-300">
+                    <div className="flex items-center justify-between">
+                      <p className="text-slate-600 text-[14px] font-medium">Total Split Bills</p>
+                      <p className="text-slate-950 text-[18px] font-bold">
+                        {formatCurrency(getSplitBillsForOrder(selectedOrder.id).reduce((sum, sb) => sum + sb.amount, 0))}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Edit Status */}
             <div className="mb-6">
