@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown, Users, ShoppingCart, DollarSign, Grid3x3 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import { useAppContext } from '../../contexts/AppContext';
-
-const topMenus = [
-  { name: 'Classic Burger', orders: 24, revenue: formatCurrency(5400000), icon: '🍔' },
-  { name: 'Margherita Pizza', orders: 18, revenue: formatCurrency(4860000), icon: '🍕' },
-  { name: 'Caesar Salad', orders: 15, revenue: formatCurrency(2700000), icon: '🥗' },
-];
+import { calculateAnalytics } from '../../utils/analyticsHelper';
 
 export default function Dashboard() {
-  const { orders, tables } = useAppContext();
+  const { orders, tables, orderItems, menus } = useAppContext();
   const [username, setUsername] = useState('Admin');
   const [role, setRole] = useState('admin');
 
@@ -24,12 +19,18 @@ export default function Dashboard() {
     }
   }, []);
 
+  const analytics = useMemo(
+    () => calculateAnalytics(orders, orderItems, menus, '2000-01-01', '2099-12-31'),
+    [orders, orderItems, menus]
+  );
+
   // Calculate stats from context data
-  const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const totalRevenue = analytics.totalRevenue;
   const activeTables = tables.filter(t => t.status === 'occupied').length;
+  const topMenus = analytics.topMenus;
   
   // Get recent orders (last 4)
-  const recentOrders = orders
+  const recentOrders = [...orders]
     .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
     .slice(0, 4)
     .map(order => ({
@@ -197,20 +198,32 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-slate-950 text-[18px] font-bold">Top Selling Items</h3>
-              <p className="text-slate-500 text-[12px]">Today</p>
+              <p className="text-slate-500 text-[12px]">Live</p>
             </div>
             
             <div className="space-y-4 divide-y divide-slate-200">
               {topMenus.map((menu, index) => (
-                <div key={index} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-md">
-                  <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center text-2xl">
-                    {menu.icon}
+                <div key={menu.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-md">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shadow-sm ${
+                    index === 0
+                      ? 'bg-gradient-to-br from-amber-300 to-orange-500 text-white'
+                      : index === 1
+                        ? 'bg-gradient-to-br from-sky-300 to-blue-500 text-white'
+                        : index === 2
+                          ? 'bg-gradient-to-br from-emerald-300 to-green-500 text-white'
+                          : index === 3
+                            ? 'bg-gradient-to-br from-violet-300 to-purple-500 text-white'
+                            : index === 4
+                              ? 'bg-gradient-to-br from-rose-300 to-pink-500 text-white'
+                          : 'bg-slate-100 text-slate-700'
+                  }`}>
+                    {index + 1}
                   </div>
                   <div className="flex-1">
                     <p className="text-slate-900 text-[14px] font-medium mb-1">{menu.name}</p>
-                    <p className="text-slate-500 text-[12px]">{menu.orders} orders</p>
+                    <p className="text-slate-500 text-[12px]">{menu.sold} orders</p>
                   </div>
-                  <p className="text-slate-900 text-[16px] font-bold">{menu.revenue}</p>
+                  <p className="text-slate-900 text-[16px] font-bold">{formatCurrency(menu.revenue)}</p>
                 </div>
               ))}
             </div>

@@ -1,48 +1,55 @@
-import { useState } from 'react';
-import { Edit2, Eye, X } from 'lucide-react';
-import { Table } from '../../types/database';
+import { useMemo, useState } from 'react';
+import { Edit2, Eye, X, Plus, Trash2 } from 'lucide-react';
+import { Menu, Order, OrderItem, Table } from '../../types/database';
 import { formatCurrency } from '../../utils/currency';
 import { useAppContext } from '../../contexts/AppContext';
 
-// Mock order data for occupied tables
-const mockOrders: Record<number, { items: { name: string; qty: number; price: number }[]; total: number; time: string }> = {
-  2: {
-    items: [
-      { name: 'Grilled Chicken', qty: 2, price: 180000 },
-      { name: 'Caesar Salad', qty: 1, price: 135000 },
-      { name: 'Iced Coffee', qty: 2, price: 60000 }
-    ],
-    total: 615000,
-    time: '14:23'
-  },
-  4: {
-    items: [
-      { name: 'Beef Burger', qty: 3, price: 180000 },
-      { name: 'Pasta Carbonara', qty: 2, price: 210000 }
-    ],
-    total: 960000,
-    time: '14:45'
-  },
-  7: {
-    items: [
-      { name: 'Pasta Carbonara', qty: 1, price: 210000 },
-      { name: 'Chocolate Cake', qty: 2, price: 90000 }
-    ],
-    total: 390000,
-    time: '15:12'
-  }
-};
-
 export default function Tables() {
-  const { tables, updateTableStatus } = useAppContext();
+  const { tables, orders, orderItems, menus, updateTableStatus, addTable, deleteTable, updateTable } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isAddTableModalOpen, setIsAddTableModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [editStatus, setEditStatus] = useState<Table['status']>('available');
+  const [editTableNumber, setEditTableNumber] = useState('');
+  const [tableToDelete, setTableToDelete] = useState<Table | null>(null);
+  const [newTableNumber, setNewTableNumber] = useState('');
+  const [newTableCapacity, setNewTableCapacity] = useState(4);
+
+  const activeOrderStatuses: Order['status'][] = ['pending', 'cooking', 'served'];
+
+  const getOrdersForTable = (tableId: number) => {
+    return orders
+      .filter(order => order.tables_id === tableId)
+      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+  };
+
+  const getVisibleTableOrder = (tableId: number) => {
+    const tableOrders = getOrdersForTable(tableId);
+    return tableOrders.find(order => activeOrderStatuses.includes(order.status)) || tableOrders[0] || null;
+  };
+
+  const getOrderItemsForOrder = (orderId: number) => {
+    return orderItems.filter(item => item.order_id === orderId);
+  };
+
+  const getMenuName = (item: OrderItem) => {
+    return item.menu?.name || menus.find(menu => menu.id === item.menus_id)?.name || `Menu #${item.menus_id}`;
+  };
+
+  const formatOrderTime = (date: Date) =>
+    new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(date);
+
+  const selectedTableOrder = useMemo(
+    () => (selectedTable ? getVisibleTableOrder(selectedTable.id) : null),
+    [selectedTable, orders, orderItems, menus]
+  );
 
   const handleEditTable = (table: Table) => {
     setSelectedTable(table);
     setEditStatus(table.status);
+    setEditTableNumber(table.table_number);
     setIsModalOpen(true);
   };
 
@@ -53,7 +60,10 @@ export default function Tables() {
 
   const handleUpdateStatus = () => {
     if (selectedTable) {
-      updateTableStatus(selectedTable.id, editStatus);
+      updateTable(selectedTable.id, {
+        table_number: editTableNumber,
+        status: editStatus,
+      });
       setIsModalOpen(false);
       setSelectedTable(null);
     }
@@ -102,6 +112,27 @@ export default function Tables() {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  const handleAddTable = () => {
+    if (newTableNumber.trim()) {
+      addTable({
+        table_number: newTableNumber,
+        status: 'available',
+        capacity: newTableCapacity,
+      });
+      setNewTableNumber('');
+      setNewTableCapacity(4);
+      setIsAddTableModalOpen(false);
+    }
+  };
+
+  const handleDeleteTable = () => {
+    if (tableToDelete) {
+      deleteTable(tableToDelete.id);
+      setTableToDelete(null);
+      setIsDeleteConfirmOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -111,6 +142,13 @@ export default function Tables() {
             <h1 className="text-slate-900 text-[24px] font-bold">Table Management</h1>
             <p className="text-slate-500 text-[14px] mt-1">Manage restaurant tables</p>
           </div>
+          <button
+            onClick={() => setIsAddTableModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-[14px] font-medium">Add Table</span>
+          </button>
         </div>
       </div>
 
@@ -180,6 +218,15 @@ export default function Tables() {
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
+                  <button
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all"
+                    onClick={() => {
+                      setTableToDelete(table);
+                      setIsDeleteConfirmOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
               
@@ -202,20 +249,23 @@ export default function Tables() {
       {isModalOpen && selectedTable && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200 shadow-2xl">
-            <h2 className="text-slate-950 text-[24px] font-bold mb-6">Edit Table Status</h2>
+            <h2 className="text-slate-950 text-[24px] font-bold mb-6">Edit Table</h2>
             
-            <form onSubmit={handleUpdateStatus} className="space-y-5">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdateStatus();
+            }} className="space-y-5">
               <div>
                 <label className="block text-slate-600 text-[13px] font-medium mb-2">
                   Table Number
                 </label>
                 <input
                   type="text"
-                  value={selectedTable.table_number}
+                  value={editTableNumber}
+                  onChange={(e) => setEditTableNumber(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-slate-950"
                   placeholder="Enter table number"
                   required
-                  readOnly
                 />
               </div>
 
@@ -246,7 +296,7 @@ export default function Tables() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-lg font-medium hover:shadow-lg transition-all"
                 >
-                  Update Status
+                  Update
                 </button>
               </div>
             </form>
@@ -281,7 +331,7 @@ export default function Tables() {
                 </label>
                 <input
                   type="text"
-                  value={mockOrders[selectedTable.table_number]?.time || 'N/A'}
+                  value={selectedTableOrder ? formatOrderTime(selectedTableOrder.created_at) : 'N/A'}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-slate-950"
                   placeholder="Enter table number"
                   required
@@ -294,12 +344,16 @@ export default function Tables() {
                   Order Items
                 </label>
                 <div className="space-y-2">
-                  {mockOrders[selectedTable.table_number]?.items.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-slate-700 text-[14px]">{item.name} x {item.qty}</span>
-                      <span className="text-slate-700 text-[14px]">{formatCurrency(item.price * item.qty)}</span>
-                    </div>
-                  ))}
+                  {selectedTableOrder ? (
+                    getOrderItemsForOrder(selectedTableOrder.id).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between">
+                        <span className="text-slate-700 text-[14px]">{getMenuName(item)} x {item.quantity}</span>
+                        <span className="text-slate-700 text-[14px]">{formatCurrency(item.subtotal)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-500 text-[14px]">No active order for this table.</p>
+                  )}
                 </div>
               </div>
 
@@ -309,7 +363,7 @@ export default function Tables() {
                 </label>
                 <input
                   type="text"
-                  value={formatCurrency(mockOrders[selectedTable.table_number]?.total || 0)}
+                  value={formatCurrency(selectedTableOrder?.total || 0)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-slate-950"
                   placeholder="Enter table number"
                   required
@@ -326,6 +380,98 @@ export default function Tables() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Table Modal */}
+      {isAddTableModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200 shadow-2xl">
+            <h2 className="text-slate-950 text-[24px] font-bold mb-6">Add New Table</h2>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleAddTable();
+            }} className="space-y-5">
+              <div>
+                <label className="block text-slate-600 text-[13px] font-medium mb-2">
+                  Table Number
+                </label>
+                <input
+                  type="text"
+                  value={newTableNumber}
+                  onChange={(e) => setNewTableNumber(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-slate-950"
+                  placeholder="e.g., Table 5"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 text-[13px] font-medium mb-2">
+                  Capacity (seats)
+                </label>
+                <input
+                  type="number"
+                  value={newTableCapacity}
+                  onChange={(e) => setNewTableCapacity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 text-slate-950"
+                  min="1"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddTableModalOpen(false);
+                    setNewTableNumber('');
+                    setNewTableCapacity(4);
+                  }}
+                  className="flex-1 px-6 py-3 bg-slate-100 text-slate-950 rounded-lg border border-slate-200 hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+                >
+                  Add Table
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && tableToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200 shadow-2xl">
+            <h2 className="text-slate-950 text-[24px] font-bold mb-4">Delete Table?</h2>
+            <p className="text-slate-600 text-[14px] mb-6">
+              Are you sure you want to delete <strong>Table {tableToDelete.table_number}</strong>? This action cannot be undone and will also delete all associated orders.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setTableToDelete(null);
+                }}
+                className="flex-1 px-6 py-3 bg-slate-100 text-slate-950 rounded-lg border border-slate-200 hover:bg-slate-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTable}
+                className="flex-1 px-6 py-3 bg-rose-500 text-white rounded-lg font-medium hover:bg-rose-600 transition-all"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

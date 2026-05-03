@@ -18,14 +18,45 @@ interface AppContextType {
   updateTableStatus: (id: number, status: Table['status']) => void;
   addOrder: (order: Order) => void;
   updateOrderStatus: (id: number, status: Order['status']) => void;
+  addTable: (table: Omit<Table, 'id'>) => void;
+  deleteTable: (id: number) => void;
+  updateTable: (id: number, updates: Partial<Omit<Table, 'id'>>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const isActiveOrderStatus = (status: Order['status']) =>
+  status === 'pending' || status === 'cooking' || status === 'served';
+
+const resolveTableStatus = (currentStatus: Table['status'], hasActiveOrders: boolean): Table['status'] => {
+  if (hasActiveOrders) {
+    return 'occupied';
+  }
+
+  return currentStatus === 'reserved' ? 'reserved' : 'available';
+};
+
+const initializeTablesFromOrders = (sourceTables: Table[], sourceOrders: Order[]) => {
+  return sourceTables.map(table => {
+    if (table.status === 'reserved') {
+      return table;
+    }
+
+    const hasActiveOrders = sourceOrders.some(
+      order => order.tables_id === table.id && isActiveOrderStatus(order.status)
+    );
+
+    return {
+      ...table,
+      status: hasActiveOrders ? 'occupied' : 'available',
+    };
+  });
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>(mockCategories);
   const [menus, setMenus] = useState<Menu[]>(mockMenus);
-  const [tables, setTables] = useState<Table[]>(mockTables);
+  const [tables, setTables] = useState<Table[]>(() => initializeTablesFromOrders(mockTables, mockOrders));
   const [orders, setOrders] = useState<Order[]>(mockOrders);
   const [orderItems, setOrderItems] = useState<OrderItem[]>(mockOrderItems);
 
@@ -71,6 +102,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   };
 
+  const syncTableStatusFromOrders = (tableId: number, nextOrders: Order[], previousStatus: Table['status']) => {
+    const hasActiveOrders = nextOrders.some(order => order.tables_id === tableId && isActiveOrderStatus(order.status));
+    return resolveTableStatus(previousStatus, hasActiveOrders);
+  };
+
   const updateTableStatus = (id: number, status: Table['status']) => {
     setTables(tables.map(t =>
       t.id === id ? { ...t, status } : t
@@ -99,21 +135,67 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // Jika table diubah dari occupied ke available/reserved, update order status ke completed
     if (status === 'available' || status === 'reserved') {
-      setOrders(orders.map(order =>
+      const nextOrders = orders.map(order =>
         order.tables_id === id && (order.status === 'pending' || order.status === 'cooking' || order.status === 'served')
           ? { ...order, status: 'completed', updated_at: new Date() }
           : order
+      );
+      setOrders(nextOrders);
+      setTables(prevTables => prevTables.map(table =>
+        table.id === id
+          ? { ...table, status }
+          : table
       ));
     }
   };
 
   const addOrder = (order: Order) => {
-    setOrders([...orders, order]);
+    const nextOrders = [...orders, order];
+    setOrders(nextOrders);
+
+    if (isActiveOrderStatus(order.status)) {
+      setTables(prevTables => prevTables.map(table =>
+        table.id === order.tables_id
+          ? { ...table, status: 'occupied' }
+          : table
+      ));
+    }
   };
 
   const updateOrderStatus = (id: number, status: Order['status']) => {
-    setOrders(orders.map(o =>
+    const nextOrders = orders.map(o =>
       o.id === id ? { ...o, status, updated_at: new Date() } : o
+    );
+
+    const updatedOrder = nextOrders.find(o => o.id === id);
+    if (updatedOrder) {
+      setTables(prevTables => prevTables.map(table =>
+        table.id === updatedOrder.tables_id
+          ? { ...table, status: syncTableStatusFromOrders(updatedOrder.tables_id, nextOrders, table.status) }
+          : table
+      ));
+    }
+
+    setOrders(nextOrders);
+  };
+
+  const addTable = (tableData: Omit<Table, 'id'>) => {
+    const newId = Math.max(...tables.map(t => t.id), 0) + 1;
+    const newTable: Table = {
+      ...tableData,
+      id: newId,
+    };
+    setTables([...tables, newTable]);
+  };
+
+  const deleteTable = (id: number) => {
+    setTables(tables.filter(t => t.id !== id));
+    setOrders(orders.filter(o => o.tables_id !== id));
+  };
+
+  const updateTable = (id: number, updates: Partial<Omit<Table, 'id'>>) => {
+    setTables(tables.map(t =>
+      t.id === id ? { ...t, ...updates } : t
     ));
   };
 
@@ -135,6 +217,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateTableStatus,
         addOrder,
         updateOrderStatus,
+        addTable,
+        deleteTable,
+        updateTable,
       }}
     >
       {children}

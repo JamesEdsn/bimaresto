@@ -74,6 +74,15 @@ export default function Payments() {
   const cardCompleted = cardPayments.filter(p => p.payment_status === 'paid').length;
   const ewalletCompleted = ewalletPayments.filter(p => p.payment_status === 'paid').length;
 
+  const cardPending = cardPayments.filter(p => p.payment_status === 'pending').length;
+  const ewalletPending = ewalletPayments.filter(p => p.payment_status === 'pending').length;
+
+  const cardCompletedTotal = cardPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total, 0);
+  const cardPendingTotal = cardPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total, 0);
+
+  const ewalletCompletedTotal = ewalletPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total, 0);
+  const ewalletPendingTotal = ewalletPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total, 0);
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -98,62 +107,180 @@ export default function Payments() {
 
       {/* Content */}
       <div className="p-8">
-        {/* Payment Stats - Always show ALL data */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Stat 1: Total All Payments */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 rounded-2xl p-6 border border-purple-500/30">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
-                <CreditCard className="w-6 h-6 text-white" />
+        {/* Payment Stats - Dynamic based on filter */}
+        {activeFilter === 'all' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Total All Payments */}
+            <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 rounded-2xl p-6 border border-purple-500/30">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Total All</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(totalCompleted + totalPending)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-slate-500 text-[12px]">Total All Payments</p>
-                <p className="text-slate-950 text-[24px] font-bold">
-                  {formatCurrency(totalCompleted + totalPending)}
-                </p>
-              </div>
+              <p className="text-gray-500 text-[12px]">
+                {payments.length} transaksi
+              </p>
             </div>
-            <p className="text-gray-500 text-[12px]">
-              {payments.length} transactions
-            </p>
-          </div>
 
-          {/* Stat 2: Completed */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-white" />
+            {/* Completed */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Completed</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {payments.filter(p => p.payment_status === 'paid').length}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-slate-500 text-[12px]">Completed</p>
-                <p className="text-slate-950 text-[24px] font-bold">
-                  {payments.filter(p => p.payment_status === 'paid').length}
-                </p>
-              </div>
+              <p className="text-slate-500 text-[12px]">
+                Transaksi berhasil
+              </p>
             </div>
-            <p className="text-slate-500 text-[12px]">
-              Paid transactions
-            </p>
-          </div>
 
-          {/* Stat 3: Pending */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-                <CreditCard className="w-6 h-6 text-white" />
+            {/* Pending */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Pending</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {payments.filter(p => p.payment_status === 'pending').length}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-slate-500 text-[12px]">Pending</p>
-                <p className="text-slate-950 text-[24px] font-bold">
-                  {payments.filter(p => p.payment_status === 'pending').length}
-                </p>
-              </div>
+              <p className="text-slate-500 text-[12px]">
+                Menunggu bayar
+              </p>
             </div>
-            <p className="text-slate-500 text-[12px]">
-              Awaiting payment
-            </p>
           </div>
-        </div>
+        )}
+
+        {activeFilter === 'card' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Card Total */}
+            <div className="bg-white rounded-2xl p-6 border border-blue-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Total Kartu</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(cardTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-blue-600 text-[12px]">
+                {cardPayments.length} transaksi kartu
+              </p>
+            </div>
+
+            {/* Card Completed */}
+            <div className="bg-white rounded-2xl p-6 border border-green-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Completed</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(cardCompletedTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-green-600 text-[12px]">
+                {cardCompleted} transaksi
+              </p>
+            </div>
+
+            {/* Card Pending */}
+            <div className="bg-white rounded-2xl p-6 border border-yellow-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Pending</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(cardPendingTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-yellow-600 text-[12px]">
+                {cardPending} transaksi
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeFilter === 'e-wallet' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* E-Wallet Total */}
+            <div className="bg-white rounded-2xl p-6 border border-green-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                  <Smartphone className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Total E-Wallet</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(ewalletTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-green-600 text-[12px]">
+                {ewalletPayments.length} transaksi e-wallet
+              </p>
+            </div>
+
+            {/* E-Wallet Completed */}
+            <div className="bg-white rounded-2xl p-6 border border-emerald-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Completed</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(ewalletCompletedTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-emerald-600 text-[12px]">
+                {ewalletCompleted} transaksi
+              </p>
+            </div>
+
+            {/* E-Wallet Pending */}
+            <div className="bg-white rounded-2xl p-6 border border-amber-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                  <Smartphone className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Pending</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(ewalletPendingTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-amber-600 text-[12px]">
+                {ewalletPending} transaksi
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Filter Selector - Below Stats */}
         <div className="mb-6">
@@ -171,7 +298,7 @@ export default function Payments() {
             
             <button
               onClick={() => setActiveFilter('card')}
-              className={`px-4 py-2 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
+              className={`px-5 py-3 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
                 activeFilter === 'card'
                   ? 'bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg'
                   : 'text-slate-600 hover:text-slate-900'
@@ -183,7 +310,7 @@ export default function Payments() {
             
             <button
               onClick={() => setActiveFilter('e-wallet')}
-              className={`px-4 py-2 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
+              className={`px-5 py-3 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
                 activeFilter === 'e-wallet'
                   ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-lg'
                   : 'text-slate-600 hover:text-slate-900'
