@@ -59,7 +59,7 @@ export function TableDetail({
   const [searchQuery, setSearchQuery] = useState("");
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"transfer" | "card" | "qris">("transfer");
-  const [cashAmount, setCashAmount] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [numPeople, setNumPeople] = useState(1);
   const [paidCount, setPaidCount] = useState(0);
   const [isPaid, setIsPaid] = useState(false);
@@ -106,11 +106,11 @@ export function TableDetail({
   const tax = Math.round(subtotal * 0.1);
   const total = subtotal; 
   const effectiveAmount = numPeople > 1 ? Math.ceil(total / numPeople) : total;
-  const change = Number(cashAmount) - effectiveAmount;
+  const change = Number(paymentAmount) - effectiveAmount;
 
   
   useEffect(() => {
-    setCashAmount(String(effectiveAmount));
+    setPaymentAmount(String(effectiveAmount));
   }, [effectiveAmount, paymentMethod]);
 
   const handleSelect = (item: BuffetPackage) => {
@@ -150,7 +150,7 @@ export function TableDetail({
     onClearTable(table.id);
     setShowPayment(false);
     setIsPaid(false);
-    setCashAmount("");
+    setPaymentAmount("");
     setPaymentMethod("transfer");
     setPaidCount(0);
     setLastPaidPerson(0);
@@ -297,7 +297,7 @@ export function TableDetail({
                     <>
                       <div className="flex justify-between text-gray-500">
                         <span>Transfer</span>
-                        <span>{formatPrice(Number(cashAmount))}</span>
+                        <span>{formatPrice(Number(paymentAmount))}</span>
                       </div>
                       <div className="flex justify-between text-emerald-600">
                         <span>Kembalian</span>

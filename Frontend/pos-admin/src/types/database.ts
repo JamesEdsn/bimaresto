@@ -88,7 +88,7 @@ export type SplitBill = {
   payment_id: number;
   person_name: string;
   amount: number;
-  payment_method: 'card' | 'e-wallet' | 'cash';
+  payment_method: 'card' | 'e-wallet';
   payment_status: 'pending' | 'paid' | 'failed';
   paid_at: Date | null;
   created_at: Date;

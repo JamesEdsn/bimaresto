@@ -9,6 +9,7 @@ import {
   Users, Calendar, Download, FileText, Image as ImageIcon, ChevronDown
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
+import { useAppContext } from '../../contexts/AppContext';
 import { calculateAnalytics } from '../../utils/analyticsHelper';
 import { mockOrders, mockOrderItems, mockMenus, mockSplitBills } from '../../data/mockData';
 
@@ -32,6 +33,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Analytics() {
+  const { tables } = useAppContext();
   const [startDate, setStartDate] = useState('2024-01-01');
   const [endDate, setEndDate] = useState('2024-03-31');
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -39,8 +41,8 @@ export default function Analytics() {
 
   // Calculate analytics from real data
   const metrics = useMemo(() => 
-    calculateAnalytics(mockOrders, mockOrderItems, mockMenus, startDate, endDate, mockSplitBills),
-    [startDate, endDate]
+    calculateAnalytics(mockOrders, mockOrderItems, mockMenus, startDate, endDate, mockSplitBills, tables.length),
+    [startDate, endDate, tables.length]
   );
 
   const handleExportCSV = () => {
@@ -53,7 +55,7 @@ export default function Analytics() {
         totalRevenue: metrics.totalRevenue,
         totalOrders: metrics.totalOrders,
         avgOrderValue: metrics.avgOrderValue,
-        totalCustomers: metrics.totalCustomers,
+        totalTables: metrics.totalTables,
         totalSplitBills: metrics.totalSplitBills,
         totalSplitAmount: metrics.totalSplitAmount,
         avgSplitAmount: metrics.avgSplitAmount,
@@ -74,7 +76,7 @@ export default function Analytics() {
     csv += `Total Revenue,${formatCurrency(reportData.summary.totalRevenue)}\n`;
     csv += `Total Orders,${reportData.summary.totalOrders}\n`;
     csv += `Average Order Value,${formatCurrency(reportData.summary.avgOrderValue)}\n`;
-    csv += `Total Customers,${reportData.summary.totalCustomers}\n`;
+    csv += `Total Tables,${reportData.summary.totalTables}\n`;
     csv += `Total Split Bills,${reportData.summary.totalSplitBills}\n`;
     csv += `Total Split Amount,${formatCurrency(reportData.summary.totalSplitAmount)}\n`;
     csv += `Average Split Amount,${formatCurrency(reportData.summary.avgSplitAmount)}\n\n`;
@@ -144,6 +146,38 @@ export default function Analytics() {
       alert('Gagal export charts sebagai gambar. Silakan coba lagi.');
     }
   };
+
+  type MetricCardProps = {
+    title: string;
+    value: string;
+    note: string;
+    icon: React.ReactNode;
+    accent: string;
+    statusLabel?: string;
+  };
+
+  const MetricCard = ({ title, value, note, icon, accent, statusLabel = 'Live' }: MetricCardProps) => (
+    <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl min-h-[182px]">
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent}`} />
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-slate-100/70 blur-2xl transition-opacity duration-300 group-hover:bg-slate-200/70" />
+      <div className="relative flex h-full flex-col">
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${accent} shadow-lg shadow-slate-200`}>
+            {icon}
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>{statusLabel}</span>
+          </div>
+        </div>
+        <div className="space-y-1.5 flex-1">
+          <p className="text-slate-500 text-[12px] font-medium uppercase tracking-[0.14em]">{title}</p>
+          <p className="text-slate-950 text-[26px] leading-tight font-bold tracking-tight">{value}</p>
+        </div>
+        <p className="mt-4 text-slate-500 text-[12px] leading-5">{note}</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -221,120 +255,73 @@ export default function Analytics() {
       {/* Content */}
       <div className="p-8 space-y-6" ref={chartsRef}>
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Total Revenue */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
-                <TrendingUp className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Total Revenue</p>
-            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.totalRevenue)}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Period: {startDate} to {endDate}</p>
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-slate-950 text-[16px] font-bold tracking-tight">Ringkasan Utama</h2>
+            <p className="text-slate-500 text-[13px] mt-1">Angka paling penting dibuat lebih rapi dan sejajar supaya cepat dibaca.</p>
           </div>
-
-          {/* Total Orders */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-                <ShoppingCart className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-slate-500 text-[12px]">
-                <TrendingDown className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Total Orders</p>
-            <p className="text-slate-950 text-[24px] font-bold">{metrics.totalOrders}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Transactions synced</p>
-          </div>
-
-          {/* Average Order Value */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
-                <TrendingUp className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Average Order Value</p>
-            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.avgOrderValue)}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Per transaction</p>
-          </div>
-
-          {/* Total Customers */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-rose-500 text-[12px]">
-                <TrendingDown className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Total Unique Tables</p>
-            <p className="text-slate-950 text-[28px] font-bold">{metrics.totalCustomers}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Unique table orders</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+            <MetricCard
+              title="Total Revenue"
+              value={formatCurrency(metrics.totalRevenue)}
+              note={`Period: ${startDate} to ${endDate}`}
+              icon={<DollarSign className="w-6 h-6 text-white" />}
+              accent="from-emerald-500 to-green-600"
+            />
+            <MetricCard
+              title="Total Orders"
+              value={String(metrics.totalOrders)}
+              note="Transactions synced"
+              icon={<ShoppingCart className="w-6 h-6 text-white" />}
+              accent="from-orange-500 to-amber-600"
+              statusLabel="Synced"
+            />
+            <MetricCard
+              title="Average Order Value"
+              value={formatCurrency(metrics.avgOrderValue)}
+              note="Per transaction"
+              icon={<Calendar className="w-6 h-6 text-white" />}
+              accent="from-violet-500 to-fuchsia-600"
+            />
+            <MetricCard
+              title="Total Tables"
+              value={String(metrics.totalTables)}
+              note="Live tables synced from the Tables page"
+              icon={<Users className="w-6 h-6 text-white" />}
+              accent="from-sky-500 to-blue-600"
+              statusLabel="Live"
+            />
           </div>
         </div>
 
         {/* Split Bill KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Split Bills */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
-                <TrendingUp className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Total Split Bills</p>
-            <p className="text-slate-950 text-[24px] font-bold">{metrics.totalSplitBills}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Transactions split</p>
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-slate-950 text-[16px] font-bold tracking-tight">Ringkasan Split Bill</h2>
+            <p className="text-slate-500 text-[13px] mt-1">Kartu di bawah dibuat sejajar supaya tidak terasa padat dan lebih mudah dipindai.</p>
           </div>
-
-          {/* Total Split Amount */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
-                <TrendingUp className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Total Split Amount</p>
-            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.totalSplitAmount)}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Split transactions value</p>
-          </div>
-
-          {/* Average Split Amount */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-500 text-[12px]">
-                <TrendingUp className="w-4 h-4" />
-                <span>Live</span>
-              </div>
-            </div>
-            <p className="text-slate-500 text-[12px] mb-1">Average Split Amount</p>
-            <p className="text-slate-950 text-[24px] font-bold">{formatCurrency(metrics.avgSplitAmount)}</p>
-            <p className="text-slate-500 text-[11px] mt-2">Per split transaction</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <MetricCard
+              title="Total Split Bills"
+              value={String(metrics.totalSplitBills)}
+              note="Transactions split"
+              icon={<Users className="w-6 h-6 text-white" />}
+              accent="from-indigo-500 to-violet-600"
+            />
+            <MetricCard
+              title="Total Split Amount"
+              value={formatCurrency(metrics.totalSplitAmount)}
+              note="Split transactions value"
+              icon={<DollarSign className="w-6 h-6 text-white" />}
+              accent="from-cyan-500 to-sky-600"
+            />
+            <MetricCard
+              title="Average Split Amount"
+              value={formatCurrency(metrics.avgSplitAmount)}
+              note="Per split transaction"
+              icon={<Calendar className="w-6 h-6 text-white" />}
+              accent="from-teal-500 to-emerald-600"
+            />
           </div>
         </div>
 

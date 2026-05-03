@@ -4,7 +4,7 @@ export interface AnalyticsMetrics {
   totalRevenue: number;
   totalOrders: number;
   avgOrderValue: number;
-  totalCustomers: number;
+  totalTables: number;
   totalSplitBills: number;
   totalSplitAmount: number;
   avgSplitAmount: number;
@@ -29,7 +29,8 @@ export function calculateAnalytics(
   menus: Menu[],
   startDate: string,
   endDate: string,
-  splitBills?: SplitBill[]
+  splitBills?: SplitBill[],
+  totalTablesCount?: number
 ): AnalyticsMetrics {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -51,7 +52,7 @@ export function calculateAnalytics(
   const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total, 0);
   const totalOrders = filteredOrders.length;
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const totalCustomers = new Set(filteredOrders.map(o => o.tables_id)).size;
+  const totalTables = totalTablesCount ?? new Set(filteredOrders.map(o => o.tables_id)).size;
 
   // Split bill metrics
   const totalSplitBills = filteredSplitBills.length;
@@ -161,7 +162,7 @@ export function calculateAnalytics(
 
   const splitBillMethods = Array.from(paymentMethodMap.entries()).map(([method, data], index) => ({
     id: `method-${index}`,
-    method: method === 'card' ? 'Card' : method === 'e-wallet' ? 'E-Wallet' : 'Cash',
+    method: method === 'card' ? 'Card' : 'E-Wallet',
     count: data.count,
     amount: data.amount,
   }));
@@ -170,7 +171,7 @@ export function calculateAnalytics(
     totalRevenue,
     totalOrders,
     avgOrderValue: Math.round(avgOrderValue),
-    totalCustomers,
+    totalTables,
     totalSplitBills,
     totalSplitAmount,
     avgSplitAmount: Math.round(avgSplitAmount),

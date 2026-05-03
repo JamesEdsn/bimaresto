@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, CreditCard, Smartphone, CheckCircle } from 'lucide-react';
+import { Search, CreditCard, Smartphone, CheckCircle, Clock3 } from 'lucide-react';
 import { Payment } from '../../types/database';
 import { mockPayments } from '../../data/mockData';
 import { formatCurrency } from '../../utils/currency';
@@ -150,7 +150,7 @@ export default function Payments() {
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 text-white" />
+                  <Clock3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <p className="text-slate-500 text-[12px]">Pending</p>
@@ -208,7 +208,7 @@ export default function Payments() {
             <div className="bg-white rounded-2xl p-6 border border-yellow-200 shadow-lg">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 text-white" />
+                  <Clock3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <p className="text-slate-500 text-[12px]">Pending</p>
@@ -266,7 +266,7 @@ export default function Payments() {
             <div className="bg-white rounded-2xl p-6 border border-amber-200 shadow-lg">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                  <Smartphone className="w-6 h-6 text-white" />
+                  <Clock3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <p className="text-slate-500 text-[12px]">Pending</p>

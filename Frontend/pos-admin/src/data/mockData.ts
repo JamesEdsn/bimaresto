@@ -905,7 +905,7 @@ export const mockSplitBills: SplitBill[] = [
     payment_id: 3,
     person_name: 'Dewi Maharani',
     amount: 80000,
-    payment_method: 'cash',
+    payment_method: 'e-wallet',
     payment_status: 'paid',
     paid_at: new Date('2024-01-15T12:21:00'),
     created_at: new Date('2024-01-15T12:00:00'),

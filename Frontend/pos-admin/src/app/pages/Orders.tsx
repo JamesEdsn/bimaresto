@@ -383,7 +383,7 @@ export default function Orders() {
                         </div>
                       </div>
                       <div className="flex items-center gap-4 text-[12px] text-slate-600 mt-2">
-                        <span className="capitalize">Method: {split.payment_method === 'e-wallet' ? 'E-Wallet' : split.payment_method === 'card' ? 'Card' : 'Cash'}</span>
+                        <span className="capitalize">Method: {split.payment_method === 'e-wallet' ? 'E-Wallet' : 'Card'}</span>
                         {split.paid_at && (
                           <span>Paid: {new Date(split.paid_at).toLocaleString('id-ID')}</span>
                         )}
