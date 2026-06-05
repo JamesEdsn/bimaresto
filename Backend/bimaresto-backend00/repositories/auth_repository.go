@@ -55,7 +55,7 @@ func (r *authRepository) CreateStaff(staff *models.Staff) error {
 
 func (r *authRepository) FindStaffByFullName(fullName string) (models.Staff, error) {
 	var staff models.Staff
-	err := r.db.Preload("Role").Where("full_name = ? AND is_active = true", fullName).First(&staff).Error
+	err := r.db.Preload("Role").Where("(LOWER(full_name) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_active = true", fullName, fullName).First(&staff).Error
 	return staff, err
 }
 

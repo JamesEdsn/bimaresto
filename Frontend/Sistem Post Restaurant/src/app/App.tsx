@@ -1,14 +1,82 @@
-import { useState } from "react";
-import { ChefHat, Clock } from "lucide-react";
-import { initialTables, OrderItem, StationOrder } from "./data/menuData";
+import { useEffect, useMemo, useState } from "react";
+import { ChefHat, Clock, LogOut } from "lucide-react";
+import { useNavigate } from "react-router";
+import { initialTables, OrderItem, StationOrder, BuffetPackage } from "./data/menuData";
 import { TableGrid } from "./components/TableGrid";
 import { TableDetail } from "./components/TableDetail";
+import { useAppContext } from "../../../pos-admin/src/contexts/AppContext";
+import { addOrderItems, createOrder, getTables, processPayment } from "../../../pos-admin/src/services/api";
+
+const SHARED_DATA_UPDATE_KEY = 'bimaresto:data-sync';
 
 export default function App() {
+  const { menus, categories, tables: backendTables, isLoading, manualRefresh } = useAppContext();
   const [tables, setTables] = useState(initialTables);
   const [activeTableId, setActiveTableId] = useState<number | null>(null);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('refresh_token');
+    window.dispatchEvent(new Event('auth-changed'));
+    navigate('/');
+  };
 
   const now = new Date();
+
+  const menuPackages = useMemo<BuffetPackage[]>(() => {
+    return menus
+      .filter((menu) => menu.is_available)
+      .map((menu) => ({
+        id: String(menu.id),
+        name: menu.name,
+        type: menu.category?.name || "Menu",
+        price: menu.price,
+        category: menu.category?.name || "Menu",
+        station: "kitchen",
+        image: menu.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1080&q=80",
+        courses: {
+          Appetizer: [menu.description || menu.name],
+          Soup: [],
+          "Main Course": [menu.name],
+          Dessert: [],
+        },
+      }));
+  }, [menus]);
+
+  const menuCategories = useMemo(
+    () => [
+      { id: "all", name: "Semua Menu" },
+      ...categories.map((category) => ({ id: category.name, name: category.name })),
+    ],
+    [categories]
+  );
+
+  useEffect(() => {
+    if (backendTables.length === 0) return;
+
+    setTables((currentTables) =>
+      backendTables.map((table) => {
+        const existing = currentTables.find((item) => item.id === table.id);
+        return {
+          id: table.id,
+          name: `Meja ${table.table_number}`,
+          seats: table.capacity || 4,
+          status: table.status === "occupied" ? "occupied" : "available",
+          backendOrderId: existing?.backendOrderId,
+          backendItemIds: existing?.backendItemIds || {},
+          orders: existing?.orders || [],
+          sentItems: existing?.sentItems || {},
+          stationOrders: existing?.stationOrders || [],
+          splitCount: existing?.splitCount || 1,
+        };
+      })
+    );
+  }, [backendTables]);
 
   const handleUpdateOrders = (tableId: number, orders: OrderItem[]) => {
     setTables((prev) =>
@@ -20,7 +88,7 @@ export default function App() {
     setTables((prev) =>
       prev.map((t) =>
         t.id === tableId
-          ? { ...t, orders: [], sentItems: {}, stationOrders: [] }
+          ? { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] }
           : t
       )
     );
@@ -28,24 +96,71 @@ export default function App() {
   };
 
   // ========== SEND TO STATION ==========
-  const handleSendToStation = (tableId: number, stationOrders: StationOrder[]) => {
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id !== tableId) return t;
-        // Update sentItems: mark sent quantities
-        const newSentItems = { ...t.sentItems };
-        stationOrders.forEach((so) => {
-          so.items.forEach((item) => {
-            newSentItems[item.itemId] = (newSentItems[item.itemId] || 0) + item.qty;
-          });
-        });
-        return {
-          ...t,
-          sentItems: newSentItems,
-          stationOrders: [...t.stationOrders, ...stationOrders],
-        };
-      })
+  const handleSendToStation = async (tableId: number, stationOrders: StationOrder[]) => {
+    const sourceTable = tables.find((table) => table.id === tableId);
+    if (!sourceTable) return;
+
+    const items = stationOrders.flatMap((stationOrder) =>
+      stationOrder.items.map((item) => ({
+        menu_id: Number(item.itemId),
+        quantity: item.qty,
+        notes: "",
+      }))
     );
+
+    let backendOrderId = sourceTable.backendOrderId;
+    let backendItemIds = { ...(sourceTable.backendItemIds || {}) };
+
+    if (items.length > 0 && items.every((item) => Number.isFinite(item.menu_id))) {
+      const savedOrder = backendOrderId
+        ? await addOrderItems(backendOrderId, items)
+        : await createOrder({
+            table_id: tableId,
+            source: "dine_in",
+            client_ref_id: `pos-${tableId}-${Date.now()}`,
+            items,
+          });
+
+      backendOrderId = savedOrder.id;
+      backendItemIds = {
+        ...backendItemIds,
+        ...(savedOrder.order_items || []).reduce<Record<string, number>>((acc, item) => {
+          acc[String(item.menus_id)] = item.id;
+          return acc;
+        }, {}),
+      };
+
+      // Update local tables immediately
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.id !== tableId) return t;
+          
+          // Update sentItems: mark sent quantities
+          const newSentItems = { ...t.sentItems };
+          stationOrders.forEach((so) => {
+            so.items.forEach((item) => {
+              newSentItems[item.itemId] = (newSentItems[item.itemId] || 0) + item.qty;
+            });
+          });
+
+          return {
+            ...t,
+            backendOrderId,
+            backendItemIds,
+            sentItems: newSentItems,
+            stationOrders: [...t.stationOrders, ...stationOrders],
+          };
+        })
+      );
+
+      // Pastikan data admin/analytics juga terupdate setelah order POS tersimpan
+      await manualRefresh();
+      try {
+        localStorage.setItem(SHARED_DATA_UPDATE_KEY, Date.now().toString());
+      } catch (error) {
+        console.warn('Unable to broadcast shared data update:', error);
+      }
+    }
   };
 
   // ========== MOVE TABLE ==========
@@ -54,10 +169,12 @@ export default function App() {
       const fromTable = prev.find((t) => t.id === fromId);
       if (!fromTable) return prev;
       return prev.map((t) => {
-        if (t.id === fromId) return { ...t, orders: [], sentItems: {}, stationOrders: [] };
+        if (t.id === fromId) return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
         if (t.id === toId)
           return {
             ...t,
+            backendOrderId: fromTable.backendOrderId,
+            backendItemIds: { ...(fromTable.backendItemIds || {}) },
             orders: [...fromTable.orders],
             sentItems: { ...fromTable.sentItems },
             stationOrders: [...fromTable.stationOrders],
@@ -99,7 +216,7 @@ export default function App() {
             sentItems: mergedSentItems,
             stationOrders: [...targetTable.stationOrders, ...sourceTable.stationOrders],
           };
-        if (t.id === sourceId) return { ...t, orders: [], sentItems: {}, stationOrders: [] };
+        if (t.id === sourceId) return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
         return t;
       });
     });
@@ -157,7 +274,29 @@ export default function App() {
     setTables((prev) =>
       prev.map((t) => {
         if (t.id !== tableId) return t;
-        return { ...t, orders: [], sentItems: {}, stationOrders: [] };
+        return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
+      })
+    );
+  };
+
+  const handleProcessPayment = async (tableId: number, amount: number, method: "transfer" | "card" | "qris") => {
+    const table = tables.find((item) => item.id === tableId);
+    if (!table?.backendOrderId) return;
+
+    await processPayment({
+      order_id: table.backendOrderId,
+      payment_method: method,
+      amount_paid: amount,
+    });
+
+    const refreshedTables = await getTables();
+    setTables((currentTables) =>
+      currentTables.map((item) => {
+        const refreshed = refreshedTables.find((nextTable) => nextTable.id === item.id);
+        if (item.id === tableId) {
+          return { ...item, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
+        }
+        return refreshed ? { ...item, status: refreshed.status === "occupied" ? "occupied" : "available" } : item;
       })
     );
   };
@@ -180,6 +319,9 @@ export default function App() {
           onSplitTable={handleSplitTable}
           onCancelItems={handleCancelItems}
           onCancelAll={handleCancelAll}
+          onProcessPayment={handleProcessPayment}
+          menuPackages={menuPackages.length > 0 ? menuPackages : undefined}
+          categoryOptions={menuCategories.length > 1 ? menuCategories : undefined}
         />
       </div>
     );
@@ -217,12 +359,20 @@ export default function App() {
               })}
             </span>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => { setTables(initialTables); setActiveTableId(null); }}
+              onClick={() => manualRefresh()}
+              disabled={isLoading}
               className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-700"
             >
               Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-md text-sm text-red-600 border border-red-100 font-medium"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
             </button>
           </div>
         </div>

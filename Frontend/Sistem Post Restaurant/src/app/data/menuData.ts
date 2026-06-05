@@ -32,6 +32,8 @@ export interface TableInfo {
   name: string;
   seats: number;
   status: "available" | "occupied";
+  backendOrderId?: number;
+  backendItemIds?: Record<string, number>;
   orders: OrderItem[];
   sentItems: Record<string, number>; // itemId → sent quantity
   stationOrders: StationOrder[];

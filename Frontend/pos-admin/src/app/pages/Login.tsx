@@ -48,7 +48,10 @@ export default function Login() {
       otherStorage.removeItem('refresh_token');
       notifyAuthChanged();
 
-      if (auth.staff.role_id === 1 || auth.staff.role_id === 4) {
+      const roleId = Number(auth.staff.role_id);
+      const roleName = String(auth.staff.role || '').toLowerCase();
+
+      if (roleId === 1 || roleId === 4 || roleName === 'admin' || roleName === 'manager') {
         navigate('/admin');
       } else {
         navigate('/pos');
@@ -79,7 +82,7 @@ export default function Login() {
 
     // Role-based navigation
     const emailToCheck = email.toLowerCase();
-    if (emailToCheck.includes('admin')) {
+    if (emailToCheck.includes('admin') || emailToCheck.includes('manager')) {
       navigate('/admin');
     } else {
       navigate('/pos');

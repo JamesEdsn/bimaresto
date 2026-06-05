@@ -40,6 +40,9 @@ interface TableDetailProps {
   onSplitTable: (fromId: number, toId: number, items: OrderItem[]) => void;
   onCancelItems: (tableId: number, itemIds: string[], reason: string) => void;
   onCancelAll: (tableId: number, reason: string) => void;
+  onProcessPayment: (tableId: number, amount: number, method: "transfer" | "card" | "qris") => Promise<void>;
+  menuPackages?: BuffetPackage[];
+  categoryOptions?: Array<{ id: string; name: string }>;
 }
 
 export function TableDetail({
@@ -54,6 +57,9 @@ export function TableDetail({
   onSplitTable,
   onCancelItems,
   onCancelAll,
+  onProcessPayment,
+  menuPackages = buffetPackages,
+  categoryOptions = categories,
 }: TableDetailProps) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,12 +101,12 @@ export function TableDetail({
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
 
   const filteredMenu = useMemo(() => {
-    return buffetPackages.filter((item) => {
+    return menuPackages.filter((item) => {
       const matchCat = selectedCategory === "all" || item.type === selectedCategory;
       const matchSearch = searchQuery === "" || item.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [menuPackages, selectedCategory, searchQuery]);
 
   const subtotal = orders.reduce((s, o) => s + o.price * o.quantity, 0);
   const tax = Math.round(subtotal * 0.1);
@@ -132,7 +138,7 @@ export function TableDetail({
   };
 
 
-  const handlePay = () => {
+  const handlePay = async () => {
     
     const nextPaidCount = paidCount + 1;
     
@@ -141,7 +147,7 @@ export function TableDetail({
       setPaidCount(nextPaidCount);
       setLastPaidPerson(nextPaidCount);
     } else {
-      
+      await onProcessPayment(table.id, Number(cashAmount) || total, paymentMethod);
       setIsPaid(true);
     }
   };
@@ -602,7 +608,7 @@ export function TableDetail({
               />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {categories.map((cat) => (
+              {categoryOptions.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
