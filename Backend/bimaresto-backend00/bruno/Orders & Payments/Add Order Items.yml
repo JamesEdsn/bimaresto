@@ -1,0 +1,25 @@
+info:
+  name: Add Order Items
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{base_url}}/orders/1/items"
+  body:
+    type: json
+    data: |-
+      {
+        "items": [
+          { "menu_id": 2, "quantity": 1, "notes": "Extra pedas" }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

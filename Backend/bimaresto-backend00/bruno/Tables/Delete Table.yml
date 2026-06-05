@@ -1,0 +1,17 @@
+info:
+  name: Delete Table
+  type: http
+  seq: 3
+
+http:
+  method: DELETE
+  url: "{{base_url}}/tables/{{last_table_id}}"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

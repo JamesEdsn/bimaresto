@@ -1,0 +1,8 @@
+name: Local
+variables:
+  - name: base_url
+    value: http://localhost:3001/api
+  - name: token
+    value: ""
+  - name: refresh_token
+    value: ""

@@ -1,0 +1,17 @@
+info:
+  name: Cancel Order Item
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{base_url}}/orders/{{last_order_id}}/items/{{last_order_item_id}}"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,43 @@
+info:
+  name: Create Promo
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/promos"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Bundle Ayam + Es Teh",
+        "description": "Beli 2 Ayam Bakar Gratis 1 Es Teh",
+        "promo_type": "bundle",
+        "buy_menu_id": 1,
+        "free_menu_id": 2,
+        "buy_quantity": 2,
+        "free_quantity": 1,
+        "start_date": "2026-05-20T00:00:00Z",
+        "end_date": "2026-12-31T23:59:59Z",
+        "is_active": true
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (data && data.id) {
+            bru.setEnvVar('last_promo_id', data.id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

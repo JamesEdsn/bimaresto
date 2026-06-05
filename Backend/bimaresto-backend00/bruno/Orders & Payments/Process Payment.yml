@@ -1,0 +1,36 @@
+info:
+  name: Process Payment
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{base_url}}/payments"
+  body:
+    type: json
+    data: |-
+      {
+        "order_id": {{last_order_id}},
+        "payment_method": "qris",
+        "amount_paid": 115000
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (data && data.id) {
+            bru.setEnvVar('last_payment_id', data.id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

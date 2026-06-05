@@ -1,0 +1,29 @@
+info:
+  name: Update Staff
+  type: http
+  seq: 8
+
+http:
+  method: PUT
+  url: "{{base_url}}/staff/1"
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Manager Demo Updated",
+        "username": "manager.demo",
+        "email": "manager.demo@example.com",
+        "phone": "+62 812-0000-0001",
+        "password": "secret123",
+        "role_id": 4,
+        "is_active": true
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,23 @@
+info:
+  name: Update Order Status
+  type: http
+  seq: 10
+
+http:
+  method: PATCH
+  url: "{{base_url}}/orders/1/status"
+  body:
+    type: json
+    data: |-
+      {
+        "status": "cooking"
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

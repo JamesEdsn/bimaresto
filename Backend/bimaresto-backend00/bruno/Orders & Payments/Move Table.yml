@@ -1,0 +1,23 @@
+info:
+  name: Move Table
+  type: http
+  seq: 5
+
+http:
+  method: PUT
+  url: "{{base_url}}/orders/1/move-table"
+  body:
+    type: json
+    data: |-
+      {
+        "new_table_id": 3
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

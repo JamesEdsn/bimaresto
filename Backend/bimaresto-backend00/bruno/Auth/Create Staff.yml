@@ -1,0 +1,40 @@
+info:
+  name: Create Staff
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{base_url}}/staff"
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Manager Demo",
+        "username": "manager.demo",
+        "email": "manager.demo@example.com",
+        "phone": "+62 812-0000-0000",
+        "password": "secret123",
+        "role_id": 4,
+        "is_active": true
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (data && data.id) {
+            bru.setEnvVar('last_staff_id', data.id);
+          }
+        }

@@ -1,0 +1,38 @@
+info:
+  name: Create Menu
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/menus"
+  body:
+    type: json
+    data: |-
+      {
+        "category_id": 1,
+        "name": "Ayam Bakar Madu",
+        "description": "Ayam bakar paha manis gurih",
+        "price": 25000,
+        "is_available": true
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (data && data.id) {
+            bru.setEnvVar('last_menu_id', data.id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,27 @@
+info:
+  name: Update Menu
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{base_url}}/menus/1"
+  body:
+    type: json
+    data: |-
+      {
+        "category_id": 1,
+        "name": "Ayam Bakar Madu Special",
+        "description": "Ayam bakar paha manis gurih",
+        "price": 27500,
+        "is_available": true
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

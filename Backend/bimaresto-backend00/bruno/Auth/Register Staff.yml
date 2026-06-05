@@ -1,0 +1,25 @@
+info:
+  name: Register Staff
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}/register"
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Kasir Baru",
+        "password": "secret123",
+        "role_id": 2
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

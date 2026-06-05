@@ -1,0 +1,28 @@
+info:
+  name: Get Tables
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/tables"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (Array.isArray(data) && data.length>0) {
+            bru.setEnvVar('last_table_id', data[0].id);
+          }
+        }

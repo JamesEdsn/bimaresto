@@ -1,0 +1,23 @@
+info:
+  name: Merge Orders
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{base_url}}/orders/1/merge"
+  body:
+    type: json
+    data: |-
+      {
+        "source_order_id": 2
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,30 @@
+Port 5173 is in use, trying another one...
+
+  [32m[1mVITE[22m v6.3.5[39m  [2mready in [0m[1m677[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5174[22m/[39m
+[2m16.10.38[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\Users\nomhn\Downloads\bimaresto\Frontend\pos-admin\src\app\components\Sidebar.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.10.38[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\Users\nomhn\Downloads\bimaresto\Frontend\pos-admin\src\app\components\Sidebar.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.11.05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33mhtml-to-image, axios[32m[39m
+[2m16.11.05[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m16.11.27[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Login.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.17.35[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mpos-admin/src/types/database.ts[22m
+[2m16.17.36[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/styles/index.css, /pos-admin/src/contexts/AppContext.tsx, /pos-admin/src/app/pages/Login.tsx[22m
+[2m16.17.50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/contexts/AppContext.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.18.04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Payments.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.19.10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/styles/index.css, /pos-admin/src/app/pages/pos/POSDashboard.tsx, /@fs/C:\Users\nomhn\Downloads\bimaresto\Frontend\pos-admin\src\app\components\pos\TableDetail.tsx, /@fs/C:\Users\nomhn\Downloads\bimaresto\Frontend\pos-admin\src\app\components\pos\SendToStationModal.tsx[22m
+[2m16.19.21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\Users\nomhn\Downloads\bimaresto\Frontend\pos-admin\src\app\components\pos\TableDetail.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.19.29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\Users\nomhn\Downloads\bimaresto\Frontend\pos-admin\src\app\components\pos\TableDetail.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.19.48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/pos/POSDashboard.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.20.04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/pos/POSDashboard.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.20.16[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/pos/POSDashboard.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.20.21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/pos/POSDashboard.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.22.39[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Analytics.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.25.44[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/styles/index.css, /pos-admin/src/contexts/AppContext.tsx, /pos-admin/src/app/pages/Login.tsx, /pos-admin/src/app/pages/Analytics.tsx, /pos-admin/src/app/pages/Payments.tsx, /pos-admin/src/app/pages/pos/POSDashboard.tsx[22m
+[2m16.25.53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Analytics.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.32.59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/styles/index.css, /pos-admin/src/contexts/AppContext.tsx, /pos-admin/src/app/pages/Login.tsx, /pos-admin/src/app/pages/Analytics.tsx, /pos-admin/src/app/pages/Payments.tsx, /pos-admin/src/app/pages/pos/POSDashboard.tsx[22m
+[2m16.34.02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/contexts/AppContext.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.34.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Staff.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.35.23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Promos.tsx, /pos-admin/src/styles/index.css[22m
+[2m16.37.46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/styles/index.css, /pos-admin/src/contexts/AppContext.tsx, /pos-admin/src/app/pages/Login.tsx, /pos-admin/src/app/pages/Analytics.tsx, /pos-admin/src/app/pages/Payments.tsx, /pos-admin/src/app/pages/pos/POSDashboard.tsx[22m
+[2m16.37.59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/pos-admin/src/app/pages/Staff.tsx, /pos-admin/src/styles/index.css[22m

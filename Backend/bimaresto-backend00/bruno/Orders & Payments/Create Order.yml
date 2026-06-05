@@ -1,0 +1,43 @@
+info:
+  name: Create Order
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/orders"
+  body:
+    type: json
+    data: |-
+      {
+        "table_id": 1,
+        "source": "dine_in",
+        "client_ref_id": "order-req-abcd-1234",
+        "items": [
+          { "menu_id": 1, "quantity": 2, "notes": "Pedas sedang" },
+          { "menu_id": 2, "quantity": 2, "notes": "Es dipisah" }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (data && data.id) {
+            bru.setEnvVar('last_order_id', data.id);
+              if (data.order_items && Array.isArray(data.order_items) && data.order_items.length>0) {
+                bru.setEnvVar('last_order_item_id', data.order_items[0].id);
+              }
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

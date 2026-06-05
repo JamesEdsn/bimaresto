@@ -1,0 +1,38 @@
+info:
+  name: Split Table
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}/orders/{{last_order_id}}/split-table"
+  body:
+    type: json
+    data: |-
+      {
+        "new_table_id": 4,
+        "source": "dine_in",
+        "items": [
+          { "item_id": 1, "qty": 1 }
+        ]
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const data = res.getBody().data;
+          if (data && data.id) {
+            bru.setEnvVar('last_splitbill_id', data.id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
