@@ -5,12 +5,22 @@ import { initialTables, OrderItem, StationOrder, BuffetPackage } from "./data/me
 import { TableGrid } from "./components/TableGrid";
 import { TableDetail } from "./components/TableDetail";
 import { useAppContext } from "../../../pos-admin/src/contexts/AppContext";
-import { addOrderItems, createOrder, getTables, processPayment } from "../../../pos-admin/src/services/api";
+import {
+  addOrderItems,
+  createOrder,
+  getTables,
+  processPayment,
+  cancelOrder,
+  cancelOrderItem,
+  moveOrderTable,
+  mergeOrders,
+  splitOrderTable,
+} from "../../../pos-admin/src/services/api";
 
 const SHARED_DATA_UPDATE_KEY = 'bimaresto:data-sync';
 
 export default function App() {
-  const { menus, categories, tables: backendTables, isLoading, manualRefresh } = useAppContext();
+  const { menus, categories, tables: backendTables, orders: backendOrders, isLoading, manualRefresh } = useAppContext();
   const [tables, setTables] = useState(initialTables);
   const [activeTableId, setActiveTableId] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -28,6 +38,7 @@ export default function App() {
 
   const now = new Date();
 
+  // Map backend menus into the BuffetPackage structure
   const menuPackages = useMemo<BuffetPackage[]>(() => {
     return menus
       .filter((menu) => menu.is_available)
@@ -56,27 +67,114 @@ export default function App() {
     [categories]
   );
 
+  // Filter backend active orders (not completed, not cancelled)
+  const liveOrders = useMemo(() => {
+    return backendOrders.filter(
+      (order) =>
+        order.status === "pending" ||
+        order.status === "cooking" ||
+        order.status === "served"
+    );
+  }, [backendOrders]);
+
+  // Synchronize backend tables and active orders with local state
   useEffect(() => {
     if (backendTables.length === 0) return;
 
     setTables((currentTables) =>
       backendTables.map((table) => {
         const existing = currentTables.find((item) => item.id === table.id);
+        const activeOrder = liveOrders.find((o) => o.tables_id === table.id);
+
+        // Keep local unsent items that haven't been pushed to the backend yet
+        const unsentItems: OrderItem[] = [];
+        if (existing) {
+          existing.orders.forEach((item) => {
+            const sentQty = existing.sentItems[item.id] || 0;
+            const unsentQty = item.quantity - sentQty;
+            if (unsentQty > 0) {
+              unsentItems.push({
+                ...item,
+                quantity: unsentQty,
+              });
+            }
+          });
+        }
+
+        if (activeOrder) {
+          // Map backend active order items to the POS UI structure
+          const dbOrders: OrderItem[] = (activeOrder.order_items || []).map((item) => ({
+            id: String(item.menus_id),
+            name: item.menu?.name || "Menu",
+            price: item.unit_price,
+            quantity: item.quantity,
+            category: item.menu?.category?.name || "Menu",
+            station: "kitchen",
+            image: item.menu?.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1080&q=80",
+          }));
+
+          const sentItems: Record<string, number> = {};
+          (activeOrder.order_items || []).forEach((item) => {
+            if (item.status === "cooking" || item.status === "served") {
+              sentItems[String(item.menus_id)] = (sentItems[String(item.menus_id)] || 0) + item.quantity;
+            }
+          });
+
+          const backendItemIds = (activeOrder.order_items || []).reduce<Record<string, number>>((acc, item) => {
+            acc[String(item.menus_id)] = item.id;
+            return acc;
+          }, {});
+
+          const stationOrders = (activeOrder.order_items || [])
+            .filter((item) => item.status === "cooking" || item.status === "served")
+            .map((item) => ({
+              stationId: "kitchen",
+              items: [{ itemId: String(item.menus_id), name: item.menu?.name || "Menu", qty: item.quantity }],
+              sentAt: item.created_at ? new Date(item.created_at).toLocaleTimeString() : "Terkirim",
+            }));
+
+          // Merge local unsent items with active DB order items
+          const mergedOrders = [...dbOrders];
+          unsentItems.forEach((unsent) => {
+            const match = mergedOrders.find((db) => db.id === unsent.id);
+            if (match) {
+              match.quantity += unsent.quantity;
+            } else {
+              mergedOrders.push(unsent);
+            }
+          });
+
+          return {
+            id: table.id,
+            name: `Meja ${table.table_number}`,
+            seats: table.capacity || 4,
+            status: "occupied",
+            backendOrderId: activeOrder.id,
+            backendItemIds,
+            orders: mergedOrders,
+            sentItems,
+            stationOrders,
+            splitCount: existing?.splitCount || 1,
+          };
+        }
+
+        // Table is empty in DB
+        const mergedOrders = [...unsentItems];
         return {
           id: table.id,
           name: `Meja ${table.table_number}`,
           seats: table.capacity || 4,
-          status: table.status === "occupied" ? "occupied" : "available",
-          backendOrderId: existing?.backendOrderId,
-          backendItemIds: existing?.backendItemIds || {},
-          orders: existing?.orders || [],
-          sentItems: existing?.sentItems || {},
-          stationOrders: existing?.stationOrders || [],
+          status: mergedOrders.length > 0 ? "occupied" : (table.status === "occupied" ? "occupied" : "available"),
+          backendOrderId: undefined,
+          backendItemIds: {},
+          orders: mergedOrders,
+          sentItems: {},
+          stationOrders: [],
           splitCount: existing?.splitCount || 1,
         };
       })
     );
-  }, [backendTables]);
+  }, [backendTables, liveOrders]);
 
   const handleUpdateOrders = (tableId: number, orders: OrderItem[]) => {
     setTables((prev) =>
@@ -164,119 +262,180 @@ export default function App() {
   };
 
   // ========== MOVE TABLE ==========
-  const handleMoveTable = (fromId: number, toId: number) => {
-    setTables((prev) => {
-      const fromTable = prev.find((t) => t.id === fromId);
-      if (!fromTable) return prev;
-      return prev.map((t) => {
-        if (t.id === fromId) return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
-        if (t.id === toId)
-          return {
-            ...t,
-            backendOrderId: fromTable.backendOrderId,
-            backendItemIds: { ...(fromTable.backendItemIds || {}) },
-            orders: [...fromTable.orders],
-            sentItems: { ...fromTable.sentItems },
-            stationOrders: [...fromTable.stationOrders],
-          };
-        return t;
+  const handleMoveTable = async (fromId: number, toId: number) => {
+    const fromTable = tables.find((t) => t.id === fromId);
+    if (fromTable && fromTable.backendOrderId) {
+      try {
+        await moveOrderTable(fromTable.backendOrderId, toId);
+        await manualRefresh();
+      } catch (e) {
+        console.error("Gagal pindah meja:", e);
+      }
+    } else {
+      setTables((prev) => {
+        if (!fromTable) return prev;
+        return prev.map((t) => {
+          if (t.id === fromId) return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
+          if (t.id === toId)
+            return {
+              ...t,
+              backendOrderId: fromTable.backendOrderId,
+              backendItemIds: { ...(fromTable.backendItemIds || {}) },
+              orders: [...fromTable.orders],
+              sentItems: { ...fromTable.sentItems },
+              stationOrders: [...fromTable.stationOrders],
+            };
+          return t;
+        });
       });
-    });
+    }
     setActiveTableId(null);
   };
 
   // ========== MERGE TABLE ==========
-  const handleMergeTable = (targetId: number, sourceId: number) => {
-    setTables((prev) => {
-      const sourceTable = prev.find((t) => t.id === sourceId);
-      const targetTable = prev.find((t) => t.id === targetId);
-      if (!sourceTable || !targetTable) return prev;
+  const handleMergeTable = async (targetId: number, sourceId: number) => {
+    const sourceTable = tables.find((t) => t.id === sourceId);
+    const targetTable = tables.find((t) => t.id === targetId);
+    if (sourceTable && sourceTable.backendOrderId && targetTable && targetTable.backendOrderId) {
+      try {
+        await mergeOrders(targetTable.backendOrderId, sourceTable.backendOrderId);
+        await manualRefresh();
+      } catch (e) {
+        console.error("Gagal gabung meja:", e);
+      }
+    } else {
+      setTables((prev) => {
+        if (!sourceTable || !targetTable) return prev;
 
-      const mergedOrders = [...targetTable.orders];
-      sourceTable.orders.forEach((so) => {
-        const existing = mergedOrders.find((o) => o.id === so.id);
-        if (existing) {
-          existing.quantity += so.quantity;
-        } else {
-          mergedOrders.push({ ...so });
-        }
-      });
+        const mergedOrders = [...targetTable.orders];
+        sourceTable.orders.forEach((so) => {
+          const existing = mergedOrders.find((o) => o.id === so.id);
+          if (existing) {
+            existing.quantity += so.quantity;
+          } else {
+            mergedOrders.push({ ...so });
+          }
+        });
 
-      // Merge sentItems
-      const mergedSentItems = { ...targetTable.sentItems };
-      Object.entries(sourceTable.sentItems).forEach(([key, val]) => {
-        mergedSentItems[key] = (mergedSentItems[key] || 0) + val;
-      });
+        // Merge sentItems
+        const mergedSentItems = { ...targetTable.sentItems };
+        Object.entries(sourceTable.sentItems).forEach(([key, val]) => {
+          mergedSentItems[key] = (mergedSentItems[key] || 0) + val;
+        });
 
-      return prev.map((t) => {
-        if (t.id === targetId)
-          return {
-            ...t,
-            orders: mergedOrders,
-            sentItems: mergedSentItems,
-            stationOrders: [...targetTable.stationOrders, ...sourceTable.stationOrders],
-          };
-        if (t.id === sourceId) return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
-        return t;
+        return prev.map((t) => {
+          if (t.id === targetId)
+            return {
+              ...t,
+              orders: mergedOrders,
+              sentItems: mergedSentItems,
+              stationOrders: [...targetTable.stationOrders, ...sourceTable.stationOrders],
+            };
+          if (t.id === sourceId) return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
+          return t;
+        });
       });
-    });
+    }
   };
 
   // ========== SPLIT TABLE ==========
-  const handleSplitTable = (fromId: number, toId: number, items: OrderItem[]) => {
-    setTables((prev) => {
-      const fromTable = prev.find((t) => t.id === fromId);
-      if (!fromTable) return prev;
+  const handleSplitTable = async (fromId: number, toId: number, items: OrderItem[]) => {
+    const fromTable = tables.find((t) => t.id === fromId);
+    if (fromTable && fromTable.backendOrderId) {
+      // Map local items to backend item IDs
+      const backendItems = items.map((item) => {
+        const dbItemId = fromTable.backendItemIds?.[item.id];
+        return {
+          item_id: dbItemId || 0,
+          qty: item.quantity,
+        };
+      }).filter((item) => item.item_id > 0);
 
-      const updatedFromOrders = fromTable.orders
-        .map((o) => {
-          const splitItem = items.find((i) => i.id === o.id);
-          if (splitItem) return { ...o, quantity: o.quantity - splitItem.quantity };
-          return o;
-        })
-        .filter((o) => o.quantity > 0);
+      try {
+        await splitOrderTable(fromTable.backendOrderId, toId, backendItems);
+        await manualRefresh();
+      } catch (e) {
+        console.error("Gagal pisah meja:", e);
+      }
+    } else {
+      setTables((prev) => {
+        if (!fromTable) return prev;
 
-      // Split sentItems proportionally
-      const newFromSentItems = { ...fromTable.sentItems };
-      const newToSentItems: Record<string, number> = {};
-      items.forEach((item) => {
-        const sentQty = fromTable.sentItems[item.id] || 0;
-        if (sentQty > 0) {
-          const transferSent = Math.min(sentQty, item.quantity);
-          newToSentItems[item.id] = transferSent;
-          newFromSentItems[item.id] = sentQty - transferSent;
-          if (newFromSentItems[item.id] <= 0) delete newFromSentItems[item.id];
-        }
+        const updatedFromOrders = fromTable.orders
+          .map((o) => {
+            const splitItem = items.find((i) => i.id === o.id);
+            if (splitItem) return { ...o, quantity: o.quantity - splitItem.quantity };
+            return o;
+          })
+          .filter((o) => o.quantity > 0);
+
+        // Split sentItems proportionally
+        const newFromSentItems = { ...fromTable.sentItems };
+        const newToSentItems: Record<string, number> = {};
+        items.forEach((item) => {
+          const sentQty = fromTable.sentItems[item.id] || 0;
+          if (sentQty > 0) {
+            const transferSent = Math.min(sentQty, item.quantity);
+            newToSentItems[item.id] = transferSent;
+            newFromSentItems[item.id] = sentQty - transferSent;
+            if (newFromSentItems[item.id] <= 0) delete newFromSentItems[item.id];
+          }
+        });
+
+        return prev.map((t) => {
+          if (t.id === fromId) return { ...t, orders: updatedFromOrders, sentItems: newFromSentItems };
+          if (t.id === toId) return { ...t, orders: [...items], sentItems: newToSentItems, stationOrders: [] };
+          return t;
+        });
       });
-
-      return prev.map((t) => {
-        if (t.id === fromId) return { ...t, orders: updatedFromOrders, sentItems: newFromSentItems };
-        if (t.id === toId) return { ...t, orders: [...items], sentItems: newToSentItems, stationOrders: [] };
-        return t;
-      });
-    });
+    }
   };
 
   // ========== CANCEL ORDER ==========
-  const handleCancelItems = (tableId: number, itemIds: string[], _reason: string) => {
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id !== tableId) return t;
-        const filtered = t.orders.filter((o) => !itemIds.includes(o.id));
-        const newSentItems = { ...t.sentItems };
-        itemIds.forEach((id) => delete newSentItems[id]);
-        return { ...t, orders: filtered, sentItems: newSentItems };
-      })
-    );
+  const handleCancelItems = async (tableId: number, itemIds: string[], _reason: string) => {
+    const table = tables.find((t) => t.id === tableId);
+    if (table && table.backendOrderId) {
+      for (const id of itemIds) {
+        const backendItemId = table.backendItemIds?.[id];
+        if (backendItemId) {
+          try {
+            await cancelOrderItem(table.backendOrderId, backendItemId);
+          } catch (e) {
+            console.error("Gagal batalkan item:", e);
+          }
+        }
+      }
+      await manualRefresh();
+    } else {
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.id !== tableId) return t;
+          const filtered = t.orders.filter((o) => !itemIds.includes(o.id));
+          const newSentItems = { ...t.sentItems };
+          itemIds.forEach((id) => delete newSentItems[id]);
+          return { ...t, orders: filtered, sentItems: newSentItems };
+        })
+      );
+    }
   };
 
-  const handleCancelAll = (tableId: number, _reason: string) => {
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id !== tableId) return t;
-        return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
-      })
-    );
+  const handleCancelAll = async (tableId: number, _reason: string) => {
+    const table = tables.find((t) => t.id === tableId);
+    if (table && table.backendOrderId) {
+      try {
+        await cancelOrder(table.backendOrderId);
+      } catch (e) {
+        console.error("Gagal batalkan order:", e);
+      }
+      await manualRefresh();
+    } else {
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.id !== tableId) return t;
+          return { ...t, backendOrderId: undefined, backendItemIds: {}, orders: [], sentItems: {}, stationOrders: [] };
+        })
+      );
+    }
   };
 
   const handleProcessPayment = async (tableId: number, amount: number, method: "transfer" | "card" | "qris") => {
