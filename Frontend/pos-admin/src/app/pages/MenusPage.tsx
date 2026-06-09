@@ -268,14 +268,29 @@ export default function MenusPage() {
               <div>
                 <label className="block text-slate-700 text-[13px] font-medium mb-2">
                   Description
+                  <span className="ml-2 text-orange-500 font-normal">(menentukan kursus di POS)</span>
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-900"
-                  placeholder="Enter menu description"
+                  placeholder="Contoh: appetizer: Lumpia Goreng"
                   required
                 />
+                <div className="mt-2 p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                  <p className="text-[11px] text-orange-700 font-semibold mb-1">💡 Format kursus di POS (tulis di deskripsi):</p>
+                  <p className="text-[11px] text-orange-600 mb-2">Bisa tulis satu atau semua sekaligus dalam satu baris:</p>
+                  <code className="block text-[10px] bg-white border border-orange-200 rounded px-2 py-1.5 text-orange-800 mb-2">
+                    appetizer: Lumpia Goreng soup: Soto Ayam main course: Rendang dessert: Es Campur
+                  </code>
+                  <ul className="text-[11px] text-orange-600 space-y-0.5">
+                    <li><strong>appetizer:</strong> → Appetizer</li>
+                    <li><strong>soup:</strong> → Soup</li>
+                    <li><strong>main course:</strong> → Main Course</li>
+                    <li><strong>dessert:</strong> → Dessert</li>
+                    <li className="text-slate-500 mt-1">Tanpa keyword → otomatis masuk Main Course</li>
+                  </ul>
+                </div>
               </div>
 
               <div>

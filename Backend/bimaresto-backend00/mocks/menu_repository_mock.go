@@ -39,3 +39,28 @@ func (m *MenuRepositoryMock) Delete(menu *models.Menu) error {
 	args := m.Called(menu)
 	return args.Error(0)
 }
+
+func (m *MenuRepositoryMock) CreateCategory(category *models.Category) error {
+	args := m.Called(category)
+	return args.Error(0)
+}
+
+func (m *MenuRepositoryMock) FindCategoryByID(id string) (models.Category, error) {
+	args := m.Called(id)
+	return args.Get(0).(models.Category), args.Error(1)
+}
+
+func (m *MenuRepositoryMock) UpdateCategory(category *models.Category) error {
+	args := m.Called(category)
+	return args.Error(0)
+}
+
+func (m *MenuRepositoryMock) DeleteCategory(category *models.Category) error {
+	args := m.Called(category)
+	return args.Error(0)
+}
+
+func (m *MenuRepositoryMock) DeleteWithDependencies(menu *models.Menu) error {
+	args := m.Called(menu)
+	return args.Error(0)
+}

@@ -9,6 +9,8 @@ export interface MenuItem {
 
 export interface OrderItem extends MenuItem {
   quantity: number;
+  isPromo?: boolean;
+  promoNotes?: string;
 }
 
 export interface Station {

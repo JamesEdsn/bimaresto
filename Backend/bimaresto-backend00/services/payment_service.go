@@ -80,11 +80,20 @@ func (s *paymentService) ProcessPayment(orderID, staffID int, amountPaid float64
 
 	// 3. DEKLARASI DI SINI agar dikenal oleh seluruh fungsi
 	var change float64 = 0
+	var remaining float64 = 0
 	var appliedAmount float64 = amountPaid
+	var newOrderStatus string
 
-	if amountPaid >= order.Total {
-		change = amountPaid - order.Total
-		appliedAmount = order.Total
+	if order.TotalPaid+amountPaid >= order.Total {
+		change = (order.TotalPaid + amountPaid) - order.Total
+		appliedAmount = order.Total - order.TotalPaid
+		remaining = 0
+		newOrderStatus = "completed"
+	} else {
+		change = 0
+		appliedAmount = amountPaid
+		remaining = order.Total - (order.TotalPaid + amountPaid)
+		newOrderStatus = order.Status
 	}
 
 	// 4. Proses Payment
@@ -94,15 +103,17 @@ func (s *paymentService) ProcessPayment(orderID, staffID int, amountPaid float64
 		TablesID:      order.TablesID,
 		StaffID:       staffID,
 		Total:         appliedAmount,
+		AmountPaid:    amountPaid,
+		Change:        change,
 		PaymentMethod: method,
 		PaymentStatus: "paid",
 		PaidAt:        &now,
 	}
 
-	err = s.repo.ProcessPaymentTx(&payment, &order, "completed")
+	err = s.repo.ProcessPaymentTx(&payment, &order, newOrderStatus)
 
-	// 5. Sekarang change dan appliedAmount sudah bisa diakses di sini
-	return payment, change, "completed", err
+	// 5. Kembalikan data sesuai ekspektasi test
+	return payment, remaining, newOrderStatus, err
 }
 
 func (s *paymentService) ProcessItemSplit(orderID int, itemIDs []int, staffID int, method string) (models.Payment, float64, error) {
@@ -112,10 +123,16 @@ func (s *paymentService) ProcessItemSplit(orderID int, itemIDs []int, staffID in
 	// 2. Ambil item-item yang mau dibayar
 	items, _ := s.repo.FindItemsByIDs(itemIDs)
 
-	// 3. Hitung Subtotal dari item terpilih saja
-	var subtotalItem float64
+	// 3. Hitung Total dari item terpilih beserta pajak dan service fee
+	var itemTotal float64
 	for _, item := range items {
-		subtotalItem += item.Subtotal
+		if item.IsPaid {
+			return models.Payment{}, 0, errors.New("beberapa item sudah pernah dibayar")
+		}
+		itemBasePrice := item.UnitPrice * float64(item.Quantity)
+		itemTax := itemBasePrice * 0.10
+		itemService := itemBasePrice * 0.05
+		itemTotal += itemBasePrice + itemTax + itemService
 	}
 
 	// Normalisasi and validate method
@@ -129,17 +146,25 @@ func (s *paymentService) ProcessItemSplit(orderID int, itemIDs []int, staffID in
 	payment := models.Payment{
 		TablesID:      order.TablesID,
 		StaffID:       staffID,
-		Total:         subtotalItem,
+		Total:         itemTotal,
+		AmountPaid:    itemTotal,
+		Change:        0,
 		PaymentMethod: method,
 		PaymentStatus: "paid",
 		PaidAt:        &now,
 	}
 
-	// 5. Process payment
-	err := s.repo.ProcessItemPaymentTx(&payment, &order, itemIDs, "completed")
+	// Calculate new order status
+	newOrderStatus := order.Status
+	if order.TotalPaid + itemTotal >= order.Total {
+		newOrderStatus = "completed"
+	}
 
-	// Return change (if overpaid, 0 normally for split payments)
-	remaining := order.Total - subtotalItem
+	// 5. Process payment
+	err := s.repo.ProcessItemPaymentTx(&payment, &order, itemIDs, newOrderStatus)
+
+	// Return remaining
+	remaining := order.Total - (order.TotalPaid + itemTotal)
 
 	return payment, remaining, err
 }

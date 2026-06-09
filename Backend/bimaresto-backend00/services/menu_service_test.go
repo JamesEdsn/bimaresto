@@ -18,13 +18,13 @@ func TestCreateMenu_Success(t *testing.T) {
 	menuRepo.On("Create", mock.AnythingOfType("*models.Menu")).Return(nil)
 
 	// 3. Eksekusi fungsi yang mau di-test
-	menu, err := menuService.CreateMenu(1, "Nasi Goreng Spesial", "Nasi goreng ayam", 25000, true)
+	menu, err := menuService.CreateMenu(1, "Nasi Goreng Spesial", "Nasi goreng ayam", 25000, true, "")
 
 	// 4. Validasi hasil (Assert)
 	assert.Nil(t, err)                                // Harus tidak ada error
 	assert.Equal(t, "Nasi Goreng Spesial", menu.Name) // Nama harus sesuai
 	assert.Equal(t, float64(25000), menu.Price)       // Harga harus sesuai
-	assert.Equal(t, 1, menu.CategoryID)
+	assert.Equal(t, 1, menu.CategoriesID)
 
 	// Pastikan repository benar-benar dipanggil tepat 1 kali
 	menuRepo.AssertExpectations(t)
@@ -35,7 +35,7 @@ func TestCreateMenu_Failed_Validation(t *testing.T) {
 	menuService := NewMenuService(menuRepo)
 
 	// Uji kasus: Harga 0 (seharusnya gagal di Service, tidak sampai memanggil Repository)
-	menu, err := menuService.CreateMenu(1, "Es Teh", "Manis", 0, true)
+	menu, err := menuService.CreateMenu(1, "Es Teh", "Manis", 0, true, "")
 
 	// Validasi hasil
 	assert.NotNil(t, err) // Harus menghasilkan error

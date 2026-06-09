@@ -36,7 +36,7 @@ func TestCreateOrder_Success_KalkulasiBenar(t *testing.T) {
 	orderRepo.On("CreateOrderTx", mock.AnythingOfType("*models.Order")).Return(nil)
 
 	// 4. Eksekusi Fungsi
-	order, err := orderService.CreateOrder(5, 2, "dine_in", "", "client-uuid-123", itemsInput)
+	order, err := orderService.CreateOrder(5, 2, "dine_in", "client-uuid-123", itemsInput)
 
 	// 5. Validasi Hasil (Sangat Krusial!)
 	assert.Nil(t, err)
@@ -45,7 +45,7 @@ func TestCreateOrder_Success_KalkulasiBenar(t *testing.T) {
 	assert.Equal(t, float64(5000), order.Tax, "Pajak salah hitung!")
 	assert.Equal(t, float64(2500), order.ServiceFee, "Service fee salah hitung!")
 	assert.Equal(t, float64(57500), order.Total, "Grand Total salah hitung!")
-	assert.Len(t, order.Items, 2) // Harus ada 2 item di dalam order
+	assert.Len(t, order.OrderItems, 2) // Harus ada 2 item di dalam order
 }
 
 // SKENARIO 2: GAGAL KARENA MENU SEDANG HABIS (TIDAK TERSEDIA)
@@ -66,7 +66,7 @@ func TestCreateOrder_Failed_MenuHabis(t *testing.T) {
 	orderRepo.On("FindMenusByIDs", []int{1}).Return(mockMenus, nil)
 
 	// Eksekusi
-	order, err := orderService.CreateOrder(5, 2, "dine_in", "", "client-uuid-123", itemsInput)
+	order, err := orderService.CreateOrder(5, 2, "dine_in", "client-uuid-123", itemsInput)
 
 	// Validasi
 	assert.NotNil(t, err)

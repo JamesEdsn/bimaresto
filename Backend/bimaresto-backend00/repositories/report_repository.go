@@ -31,15 +31,15 @@ func (r *reportRepository) GetDailyRevenue(startDate string, endDate string, lim
 	if startDate != "" && endDate != "" {
 		err := r.db.Raw(`
 			SELECT
-				TO_CHAR(created_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS date,
+				TO_CHAR(paid_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS date,
 				COUNT(id) AS total_orders,
-				SUM(subtotal) AS total_revenue,
-				SUM(tax) AS total_tax,
-				SUM(service_fee) AS total_service
-			FROM orders
-			WHERE status IN ('paid', 'completed')
-			  AND TO_CHAR(created_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') >= ?
-			  AND TO_CHAR(created_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') <= ?
+				SUM(total) AS total_revenue,
+				0 AS total_tax,
+				0 AS total_service
+			FROM payments
+			WHERE payment_status = 'paid'
+			  AND TO_CHAR(paid_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') >= ?
+			  AND TO_CHAR(paid_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') <= ?
 			GROUP BY date
 			ORDER BY date DESC
 		`, startDate, endDate).Scan(&reports).Error
@@ -48,13 +48,13 @@ func (r *reportRepository) GetDailyRevenue(startDate string, endDate string, lim
 
 	err := r.db.Raw(`
 		SELECT
-			TO_CHAR(created_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS date,
+			TO_CHAR(paid_at AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD') AS date,
 			COUNT(id) AS total_orders,
-			SUM(subtotal) AS total_revenue,
-			SUM(tax) AS total_tax,
-			SUM(service_fee) AS total_service
-		FROM orders
-		WHERE status IN ('paid', 'completed')
+			SUM(total) AS total_revenue,
+			0 AS total_tax,
+			0 AS total_service
+		FROM payments
+		WHERE payment_status = 'paid'
 		GROUP BY date
 		ORDER BY date DESC
 		LIMIT ?

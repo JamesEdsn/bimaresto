@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Category, Menu, Table, Order, OrderItem, SplitBill } from '../types/database';
+import { Category, Menu, Table, Order, OrderItem, SplitBill, Promo } from '../types/database';
 import {
   createCategory,
   createMenu,
@@ -12,6 +12,7 @@ import {
   getOrders,
   getSplitBills,
   getTables,
+  getPromos,
   updateOrderStatus as updateOrderStatusById,
   updateCategoryById,
   updateMenuById,
@@ -26,6 +27,7 @@ interface AppContextType {
   orders: Order[];
   orderItems: OrderItem[];
   splitBills: SplitBill[];
+  promos: Promo[];
   isLoading: boolean;
   refreshData: () => Promise<void>;
   manualRefresh: () => Promise<void>;
@@ -55,20 +57,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [splitBills, setSplitBills] = useState<SplitBill[]>([]);
+  const [promos, setPromos] = useState<Promo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [authToken, setAuthToken] = useState<string | null>(() => getStoredToken());
   const [manualRefreshDone, setManualRefreshDone] = useState(false);
 
-  const refreshData = async () => {
-    setIsLoading(true);
+  const fetchData = async (showLoading: boolean) => {
+    if (showLoading) setIsLoading(true);
     try {
       // Menarik data secara paralel dari backend bruno-based
-      const [catsData, menusData, tablesData, ordersData, splitBillsData] = await Promise.all([
+      const [catsData, menusData, tablesData, ordersData, splitBillsData, promosData] = await Promise.all([
         getCategories(),
         getMenus(),
         getTables(),
         getOrders(),
         getSplitBills(),
+        getPromos(),
       ]);
 
       setCategories(catsData || []);
@@ -76,14 +81,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTables(tablesData || []);
       setOrders(ordersData || []);
       setSplitBills(splitBillsData || []);
+      setPromos(promosData || []);
       setOrderItems(
         (ordersData || []).flatMap(order => order.order_items || [])
       );
     } catch (error) {
       console.error("Gagal mengambil data dari API:", error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
+      setIsInitialLoad(false);
     }
+  };
+
+  const refreshData = async () => {
+    // After first load, always refresh silently in the background
+    await fetchData(false);
   };
 
   useEffect(() => {
@@ -113,7 +125,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (authToken) {
-      // Do not auto-refresh on open. Only refresh on focus/online if user has manually refreshed once.
+      // Load data on first login with loading screen
+      if (isInitialLoad) {
+        fetchData(true);
+      }
+
       const handleWindowFocus = () => {
         if (manualRefreshDone) refreshData();
       };
@@ -142,7 +158,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const manualRefresh = async () => {
     setManualRefreshDone(true);
-    await refreshData();
+    // Background refresh — jangan tampilkan loading screen
+    await fetchData(false);
   };
 
   const addCategory = async (name: string) => {
@@ -284,6 +301,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         orders,
         orderItems,
         splitBills,
+        promos,
         isLoading,
         refreshData,
         manualRefresh,
@@ -301,7 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateOrderStatus,
       }}
     >
-      {isLoading ? (
+      {isInitialLoad && isLoading ? (
         <div className="flex h-screen w-full items-center justify-center bg-gray-50">
           <div className="text-center">
             <p className="text-lg font-medium text-gray-600 animate-pulse">

@@ -11,6 +11,11 @@ type PaymentRepositoryMock struct {
 	mock.Mock
 }
 
+func (m *PaymentRepositoryMock) FindAll() ([]models.Payment, error) {
+	args := m.Called()
+	return args.Get(0).([]models.Payment), args.Error(1)
+}
+
 func (m *PaymentRepositoryMock) FindOrderWithItems(orderID string) (models.Order, error) {
 	args := m.Called(orderID)
 	return args.Get(0).(models.Order), args.Error(1)
@@ -21,8 +26,8 @@ func (m *PaymentRepositoryMock) FindOrderForPayment(orderID int) (models.Order, 
 	return args.Get(0).(models.Order), args.Error(1)
 }
 
-func (m *PaymentRepositoryMock) ProcessPaymentTx(payment *models.Payment, order *models.Order, newStatus string, freeTable bool) error {
-	args := m.Called(payment, order, newStatus, freeTable)
+func (m *PaymentRepositoryMock) ProcessPaymentTx(payment *models.Payment, order *models.Order, newStatus string) error {
+	args := m.Called(payment, order, newStatus)
 	return args.Error(0)
 }
 
@@ -31,7 +36,12 @@ func (m *PaymentRepositoryMock) FindItemsByIDs(itemIDs []int) ([]models.OrderIte
 	return args.Get(0).([]models.OrderItem), args.Error(1)
 }
 
-func (m *PaymentRepositoryMock) ProcessItemPaymentTx(payment *models.Payment, order *models.Order, itemIDs []int, newOrderStatus string, freeTable bool) error {
-	args := m.Called(payment, order, itemIDs, newOrderStatus, freeTable)
+func (m *PaymentRepositoryMock) ProcessItemPaymentTx(payment *models.Payment, order *models.Order, itemIDs []int, newOrderStatus string) error {
+	args := m.Called(payment, order, itemIDs, newOrderStatus)
+	return args.Error(0)
+}
+
+func (m *PaymentRepositoryMock) Delete(id int) error {
+	args := m.Called(id)
 	return args.Error(0)
 }

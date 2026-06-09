@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, TrendingDown, DollarSign, ShoppingCart, 
-  Users, Calendar, Download, FileText, Image as ImageIcon, ChevronDown
+  Users, Calendar, Download, FileText, Image as ImageIcon, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import { useAppContext } from '../../contexts/AppContext';
@@ -202,25 +202,25 @@ const Analytics = () => {
     
     csv += 'SALES BY MONTH\n';
     csv += 'Month,Sales (Rp),Orders\n';
-    metrics.salesByMonth.forEach(item => {
+    metrics.salesByMonth.forEach((item: any) => {
       csv += `${item.month},${item.sales},${item.orders}\n`;
     });
     
     csv += '\nTOP SELLING ITEMS\n';
     csv += 'Item,Sold,Revenue (Rp)\n';
-    metrics.topMenus.forEach(item => {
+    metrics.topMenus.forEach((item: any) => {
       csv += `${item.name},${item.sold},${item.revenue}\n`;
     });
 
     csv += '\nSALES BY CATEGORY\n';
     csv += 'Category,Items Sold,Revenue (Rp)\n';
-    metrics.categoryData.forEach(item => {
+    metrics.categoryData.forEach((item: any) => {
       csv += `${item.name},${item.value},${item.revenue}\n`;
     });
 
     csv += '\nSPLIT BILL PAYMENT METHODS\n';
     csv += 'Method,Count,Amount (Rp)\n';
-    metrics.splitBillMethods.forEach(item => {
+    metrics.splitBillMethods.forEach((item: any) => {
       csv += `${item.method},${item.count},${item.amount}\n`;
     });
 
@@ -308,6 +308,15 @@ const Analytics = () => {
             <p className="text-slate-500 text-[14px] mt-1">Sales performance and insights</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Refresh Button */}
+            <button
+              onClick={() => setRetryCount(prev => prev + 1)}
+              className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-slate-600 shadow-sm"
+              title="Refresh Data"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoadingReports ? 'animate-spin text-orange-500' : ''}`} />
+            </button>
+
             {/* Date Range Filter */}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg">
@@ -513,7 +522,7 @@ const Analytics = () => {
                   dataKey="revenue"
                   nameKey="name"
                 >
-                  {metrics.categoryData.map((entry) => (
+                  {metrics.categoryData.map((entry: any) => (
                     <Cell key={entry.id} fill={entry.color} />
                   ))}
                 </Pie>
@@ -537,7 +546,7 @@ const Analytics = () => {
 
             {/* Custom legend placed inside the same card, centered and wrapped */}
             <div className="mt-6 flex flex-wrap justify-center gap-4 px-4">
-              {metrics.categoryData.map((c) => {
+              {metrics.categoryData.map((c: any) => {
                 const label = `${c.name}: ${formatCurrency(c.revenue)}`;
                 return (
                   <div key={c.id} className="flex items-center gap-3 flex-shrink-0 whitespace-nowrap">
@@ -584,7 +593,7 @@ const Analytics = () => {
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <h3 className="text-slate-950 text-[18px] font-bold mb-6">Top Selling Items</h3>
             <div className="space-y-4">
-              {metrics.topMenus.map((menu, index) => (
+              {metrics.topMenus.map((menu: any, index: number) => (
                 <div key={index} className="flex items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-md hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold text-[14px] flex-shrink-0">
@@ -633,7 +642,7 @@ const Analytics = () => {
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
             <h3 className="text-slate-950 text-[18px] font-bold mb-6">Split Bill Breakdown</h3>
             <div className="space-y-4">
-              {metrics.splitBillMethods.map((method, index) => (
+              {metrics.splitBillMethods.map((method: any, index: number) => (
                 <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 shadow-md hover:shadow-lg transition-shadow">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-slate-900 text-[14px] font-medium">{method.method}</p>

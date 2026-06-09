@@ -127,6 +127,10 @@ func (r *orderRepository) DeleteOrderTx(orderID int, tableID int) error {
 		if err := tx.Where("order_id = ?", orderID).Delete(&models.OrderItem{}).Error; err != nil {
 			return err
 		}
+		// Hapus semua payment terkait (karena ada foreign key constraint DELETE RESTRICT)
+		if err := tx.Where("order_id = ?", orderID).Delete(&models.Payment{}).Error; err != nil {
+			return err
+		}
 		// Hapus data pesanannya
 		if err := tx.Where("id = ?", orderID).Delete(&models.Order{}).Error; err != nil {
 			return err

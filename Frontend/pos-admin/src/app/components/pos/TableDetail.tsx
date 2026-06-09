@@ -40,7 +40,7 @@ interface TableDetailProps {
   onSplitTable: (fromId: number, toId: number, items: OrderItem[]) => void;
   onCancelItems: (tableId: number, itemIds: string[], reason: string) => void;
   onCancelAll: (tableId: number, reason: string) => void;
-  onProcessPayment: (tableId: number, amount: number, method: "transfer" | "card" | "qris") => Promise<void>;
+  onProcessPayment: (tableId: number, amount: number, method: "transfer" | "card" | "e-wallet") => Promise<void>;
   menuPackages?: BuffetPackage[];
   categoryOptions?: Array<{ id: string; name: string }>;
 }
@@ -64,7 +64,7 @@ export function TableDetail({
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showPayment, setShowPayment] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"transfer" | "card" | "qris">("transfer");
+  const [paymentMethod, setPaymentMethod] = useState<"transfer" | "card" | "e-wallet">("transfer");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [numPeople, setNumPeople] = useState(1);
   const [paidCount, setPaidCount] = useState(0);
@@ -74,6 +74,8 @@ export function TableDetail({
   const [showActions, setShowActions] = useState(false);
   const [selectedBuffetPackage, setSelectedBuffetPackage] = useState<BuffetPackage | null>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
+  // Snapshot of orders saved right before payment, shown on receipt
+  const [paidSnapshot, setPaidSnapshot] = useState<{ orders: OrderItem[]; subtotal: number; total: number; paymentAmount: string } | null>(null);
 
   const orders = table.orders;
 
@@ -108,7 +110,8 @@ export function TableDetail({
     });
   }, [menuPackages, selectedCategory, searchQuery]);
 
-  const subtotal = orders.reduce((s: number, o: OrderItem) => s + o.price * o.quantity, 0);
+  // Item promo (isPromo=true) harganya 0, tidak masuk ke subtotal
+  const subtotal = orders.reduce((s: number, o: OrderItem) => s + (o.isPromo ? 0 : o.price * o.quantity), 0);
   const tax = Math.round(subtotal * 0.1);
   const total = subtotal; 
   const effectiveAmount = numPeople > 1 ? Math.ceil(total / numPeople) : total;
@@ -119,12 +122,29 @@ export function TableDetail({
     setPaymentAmount(String(effectiveAmount));
   }, [effectiveAmount, paymentMethod]);
 
+  // Jumlah total paket yang sudah di-order (semua item dijumlah quantitynya), kecuali item promo
+  const totalPackagesOrdered = orders.reduce((s: number, o: OrderItem) => s + (o.isPromo ? 0 : o.quantity), 0);
+  const MAX_PACKAGES = 4;
+
   const handleSelect = (item: BuffetPackage) => {
-  
-    const quantity = table.seats;
-  
-    onUpdateOrders(table.id, [{ ...item, quantity }]);
-    setSelectedBuffetPackage(null);
+    const remaining = MAX_PACKAGES - totalPackagesOrdered;
+
+    if (remaining <= 0) return;
+
+    const existingOrder = orders.find((o: OrderItem) => o.id === item.id);
+    if (existingOrder) {
+      // Tambah quantity ke paket yang sudah ada
+      onUpdateOrders(
+        table.id,
+        orders.map((o: OrderItem) =>
+          o.id === item.id ? { ...o, quantity: o.quantity + 1 } : o
+        )
+      );
+    } else {
+      // Tambah paket baru ke list order
+      onUpdateOrders(table.id, [...orders, { ...item, quantity: 1 }]);
+    }
+    // Sengaja tidak menutup modal/panel agar user bisa langsung tambah paket lagi
   };
 
 
@@ -142,13 +162,27 @@ export function TableDetail({
     
     const nextPaidCount = paidCount + 1;
     
-    if (nextPaidCount < numPeople) {
-      
-      setPaidCount(nextPaidCount);
-      setLastPaidPerson(nextPaidCount);
-    } else {
+    try {
+      // Kirim pembayaran ke backend untuk orang ini
       await onProcessPayment(table.id, Number(paymentAmount) || total, paymentMethod);
-      setIsPaid(true);
+
+      if (nextPaidCount < numPeople) {
+        
+        setPaidCount(nextPaidCount);
+        setLastPaidPerson(nextPaidCount);
+      } else {
+        // Snapshot orders before clearing the table
+        setPaidSnapshot({
+          orders: [...orders],
+          subtotal,
+          total,
+          paymentAmount: paymentAmount || String(total),
+        });
+        setIsPaid(true);
+      }
+    } catch (error) {
+      console.error("Gagal memproses pembayaran:", error);
+      alert("Pembayaran gagal diproses oleh server. Silakan coba lagi.");
     }
   };
 
@@ -156,6 +190,7 @@ export function TableDetail({
     onClearTable(table.id);
     setShowPayment(false);
     setIsPaid(false);
+    setPaidSnapshot(null);
     setPaymentAmount("");
     setPaymentMethod("transfer");
     setPaidCount(0);
@@ -257,6 +292,13 @@ export function TableDetail({
   
   if (showPayment) {
     if (isPaid) {
+      // Use snapshot so receipt stays populated even after table is cleared
+      const receiptOrders = paidSnapshot?.orders ?? orders;
+      const receiptSubtotal = paidSnapshot?.subtotal ?? subtotal;
+      const receiptTotal = paidSnapshot?.total ?? total;
+      const receiptPaymentAmount = paidSnapshot?.paymentAmount ?? paymentAmount;
+      const receiptChange = Number(receiptPaymentAmount) - receiptTotal;
+
       return (
         <div className="h-full flex flex-col bg-gray-50">
           <div className="flex-1 flex items-center justify-center p-6">
@@ -279,38 +321,38 @@ export function TableDetail({
                   <p className="text-orange-600 text-xs mt-1">{table.name}</p>
                 </div>
                 <div className="space-y-1 border-b border-dashed border-gray-300 pb-3 mb-3">
-                  {orders.map((o) => (
+                  {receiptOrders.map((o) => (
                     <div key={o.id} className="flex justify-between">
-                      <span className="text-gray-600">{o.quantity}x {o.name}</span>
-                      <span className="text-gray-700">{formatPrice(o.price * o.quantity)}</span>
+                      <span className="text-gray-600">{o.quantity}x {o.name}
+                        {o.isPromo && <span className="ml-1 text-pink-500 text-[10px] font-bold">🎁 Gratis</span>}
+                      </span>
+                      <span className="text-gray-700">
+                        {o.isPromo
+                          ? <span className="text-green-600 font-semibold">{formatPrice(0)}</span>
+                          : formatPrice(o.price * o.quantity)
+                        }
+                      </span>
                     </div>
                   ))}
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-gray-500">
                     <span>Subtotal</span>
-                    <span>{formatPrice(subtotal)}</span>
+                    <span>{formatPrice(receiptSubtotal)}</span>
                   </div>
                   <div className="flex justify-between text-gray-500">
-                    <span>Pajak 10%</span>
-                    <span>{formatPrice(tax)}</span>
+                    <span>Pajak 21%</span>
+                    <span>{formatPrice(0)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-900 pt-1">
+                  <div className="flex justify-between text-gray-900 font-semibold pt-1">
                     <span>Total</span>
-                    <span>{formatPrice(total)}</span>
+                    <span>{formatPrice(receiptTotal)}</span>
                   </div>
-                  {paymentMethod === "transfer" && (
-                    <>
-                      <div className="flex justify-between text-gray-500">
-                        <span>Transfer</span>
-                        <span>{formatPrice(Number(paymentAmount))}</span>
-                      </div>
-                      <div className="flex justify-between text-emerald-600">
-                        <span>Kembalian</span>
-                        <span>{formatPrice(change)}</span>
-                      </div>
-                    </>
-                  )}
+
+                  <div className="flex justify-between text-gray-500 pt-1 border-t border-dashed border-gray-200 mt-1">
+                    <span>Metode</span>
+                    <span className="capitalize">{paymentMethod}</span>
+                  </div>
                 </div>
               </div>
 
@@ -356,9 +398,17 @@ export function TableDetail({
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
               <h3 className="text-gray-900 mb-3">Ringkasan Pesanan</h3>
               {orders.map((o) => (
-                <div key={o.id} className="flex justify-between text-sm">
-                  <span className="text-gray-600">{o.quantity}x {o.name}</span>
-                  <span className="text-gray-800">{formatPrice(o.price * o.quantity)}</span>
+                <div key={o.id} className="flex justify-between text-sm items-center">
+                  <span className="text-gray-600 flex items-center">
+                    {o.quantity}x {o.name}
+                    {o.isPromo && <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">🎁 Gratis</span>}
+                  </span>
+                  <span className="text-gray-800">
+                    {o.isPromo
+                      ? <span className="text-green-600 font-bold">{formatPrice(0)}</span>
+                      : formatPrice(o.price * o.quantity)
+                    }
+                  </span>
                 </div>
               ))}
 
@@ -429,8 +479,8 @@ export function TableDetail({
               <div className="grid grid-cols-3 gap-3">
                 {([
                   { id: "transfer" as const, icon: Landmark, label: "Transfer" },
-                  { id: "card" as const, icon: CreditCard, label: "Kartu" },
-                  { id: "qris" as const, icon: QrCode, label: "QRIS" },
+                  { id: "card" as const, icon: CreditCard, label: "Card" },
+                  { id: "e-wallet" as const, icon: QrCode, label: "E-Wallet" },
                 ]).map((m) => (
                   <button
                     key={m.id}
@@ -447,7 +497,7 @@ export function TableDetail({
                 ))}
               </div>
 
-              {paymentMethod === "transfer" && (
+              {paymentMethod && (
                 <div className="mt-4 space-y-2">
                   <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
                     <p className="text-sm text-green-700 font-semibold">✓ Siap untuk Pembayaran</p>
@@ -457,10 +507,10 @@ export function TableDetail({
                   {/* Notifikasi pembayaran berhasil untuk split bill */}
                   {numPeople > 1 && paidCount > 0 && (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                      <p className="text-sm text-blue-700 font-semibold">✓ Pembayaran Orang ke-{lastPaidPerson} Berhasil!</p>
-                      {paidCount < numPeople && (
-                        <p className="text-xs text-blue-600 mt-1">Sekarang Bayar untuk Orang ke-{paidCount + 1}</p>
-                      )}
+                       <p className="text-sm text-blue-700 font-semibold">✓ Pembayaran Orang ke-{lastPaidPerson} Berhasil!</p>
+                       {paidCount < numPeople && (
+                         <p className="text-xs text-blue-600 mt-1">Sekarang Bayar untuk Orang ke-{paidCount + 1}</p>
+                       )}
                     </div>
                   )}
                   
@@ -631,7 +681,9 @@ export function TableDetail({
                 return (
                   <div
                     key={item.id}
-                    onClick={() => setSelectedBuffetPackage(item)}
+                    onClick={() => {
+                      setSelectedBuffetPackage(item);
+                    }}
                     className={`border-2 rounded-3xl overflow-hidden cursor-pointer transition shadow-sm hover:shadow-md ${
                       isSelected ? "border-orange-300 bg-orange-50" : "border-orange-100 bg-white"
                     }`}
@@ -667,14 +719,28 @@ export function TableDetail({
               })}
             </div>
             {selectedBuffetPackage && (
-              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl">
-                <h4 className="text-gray-800 font-semibold mb-2">Paket Terpilih: {selectedBuffetPackage.name}</h4>
-                <p className="text-sm text-gray-600 mb-2">Untuk {table.seats} orang - Total: {formatPrice(selectedBuffetPackage.price * table.seats)}</p>
+              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl space-y-3">
+                <div>
+                  <h4 className="text-gray-800 font-semibold">{selectedBuffetPackage.name}</h4>
+                  <p className="text-orange-600 font-bold text-sm">{formatPrice(selectedBuffetPackage.price)} / orang</p>
+                </div>
+
+                {/* Sisa slot */}
+                <div className="flex items-center justify-between text-xs text-gray-500 pb-2">
+                  <span>Kapasitas meja: maks {MAX_PACKAGES} orang</span>
+                  <span className={totalPackagesOrdered >= MAX_PACKAGES ? 'text-red-500 font-semibold' : 'text-emerald-600'}>
+                    {MAX_PACKAGES - totalPackagesOrdered} slot tersisa
+                  </span>
+                </div>
+
                 <button
                   onClick={() => handleSelect(selectedBuffetPackage)}
-                  className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 transition"
+                  disabled={totalPackagesOrdered >= MAX_PACKAGES}
+                  className="w-full bg-orange-500 text-white py-3 rounded-xl hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow text-sm"
                 >
-                  {orders.length > 0 ? "Ganti Paket Buffet" : "Pilih Paket Buffet"}
+                  {totalPackagesOrdered >= MAX_PACKAGES
+                    ? 'Maks 4 orang tercapai'
+                    : `+ Tambah`}
                 </button>
               </div>
             )}
@@ -718,9 +784,12 @@ export function TableDetail({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm text-gray-800 truncate">{o.name}</p>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs text-gray-500">{o.quantity} x {formatPrice(o.price)}</p>
+                        <p className="text-sm text-gray-800 truncate flex items-center gap-2">
+                          {o.name}
+                          {o.isPromo && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold leading-none">🎁 Gratis</span>}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs text-gray-500">{o.quantity} x {o.isPromo ? formatPrice(0) : formatPrice(o.price)}</p>
                           {sentQty > 0 && unsentQtyItem > 0 && (
                             <span className="text-[10px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
                               +{unsentQtyItem} baru
@@ -730,7 +799,12 @@ export function TableDetail({
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-sm text-gray-800">{formatPrice(o.price * o.quantity)}</span>
+                      <span className="text-sm text-gray-800">
+                        {o.isPromo
+                          ? <span className="text-green-600 font-bold">{formatPrice(0)}</span>
+                          : formatPrice(o.price * o.quantity)
+                        }
+                      </span>
                       {sentQty === 0 && (
                         <button onClick={() => removeItem(o.id)} className="text-gray-300 hover:text-red-500 transition">
                           <X className="w-3.5 h-3.5" />
@@ -789,10 +863,15 @@ export function TableDetail({
                 {/* Bayar button */}
                 <button
                   onClick={() => setShowPayment(true)}
-                  className="w-full bg-orange-500 text-white py-3 rounded-xl transition flex items-center justify-center gap-2"
+                  disabled={hasUnsentItems}
+                  className={`w-full py-3 rounded-xl transition flex items-center justify-center gap-2 ${
+                    hasUnsentItems 
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                      : "bg-orange-500 text-white hover:bg-orange-600 shadow-sm hover:shadow"
+                  }`}
                 >
                   <Landmark className="w-4 h-4" />
-                  Bayar {formatPrice(total)}
+                  {hasUnsentItems ? "Kirim Pesanan Dulu" : `Bayar ${formatPrice(total)}`}
                 </button>
               </div>
             </div>

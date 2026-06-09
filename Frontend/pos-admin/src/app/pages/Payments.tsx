@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Search, CreditCard, Smartphone, CheckCircle, Clock3 } from 'lucide-react';
+import { Search, CreditCard, Smartphone, CheckCircle, Clock3, Landmark, RefreshCw } from 'lucide-react';
 import { Payment } from '../../types/database';
 import { formatCurrency } from '../../utils/currency';
 import { getPayments, processPayment } from '../../services/api';
 
-const getPaymentCategory = (method: string): 'card' | 'e-wallet' | 'other' => {
+const getPaymentCategory = (method: string): 'card' | 'e-wallet' | 'transfer' | 'other' => {
   const norm = String(method || '').toLowerCase();
   if (norm === 'card' || norm === 'debit' || norm === 'credit') {
     return 'card';
   }
   if (norm === 'e-wallet' || norm === 'qris') {
     return 'e-wallet';
+  }
+  if (norm === 'transfer') {
+    return 'transfer';
   }
   return 'other';
 };
@@ -20,8 +23,8 @@ export default function Payments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<'card' | 'e-wallet'>('card');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'card' | 'e-wallet'>('all');
+  const [selectedMethod, setSelectedMethod] = useState<'card' | 'e-wallet' | 'transfer'>('card');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'card' | 'e-wallet' | 'transfer'>('all');
 
   useEffect(() => {
     getPayments()
@@ -33,8 +36,8 @@ export default function Payments() {
     .filter(payment => activeFilter === 'all' || getPaymentCategory(payment.payment_method) === activeFilter)
     .filter(payment =>
       payment.id.toString().includes(searchQuery) ||
-      payment.order_id.toString().includes(searchQuery) ||
-      payment.table?.table_number.includes(searchQuery)
+      payment.order_id?.toString().includes(searchQuery) ||
+      payment.table?.table_number?.includes(searchQuery)
     );
 
   const handleProcessPayment = (payment: Payment) => {
@@ -68,6 +71,8 @@ export default function Payments() {
         return <CreditCard className="w-5 h-5 text-blue-400" />;
       case 'e-wallet':
         return <Smartphone className="w-5 h-5 text-green-400" />;
+      case 'transfer':
+        return <Landmark className="w-5 h-5 text-orange-400" />;
       default:
         return null;
     }
@@ -92,21 +97,28 @@ export default function Payments() {
   // Stats per method
   const cardPayments = payments.filter(p => getPaymentCategory(p.payment_method) === 'card');
   const ewalletPayments = payments.filter(p => getPaymentCategory(p.payment_method) === 'e-wallet');
+  const transferPayments = payments.filter(p => getPaymentCategory(p.payment_method) === 'transfer');
   
   const cardTotal = cardPayments.reduce((sum, p) => sum + p.total, 0);
   const ewalletTotal = ewalletPayments.reduce((sum, p) => sum + p.total, 0);
+  const transferTotal = transferPayments.reduce((sum, p) => sum + p.total, 0);
   
   const cardCompleted = cardPayments.filter(p => p.payment_status === 'paid').length;
   const ewalletCompleted = ewalletPayments.filter(p => p.payment_status === 'paid').length;
+  const transferCompleted = transferPayments.filter(p => p.payment_status === 'paid').length;
 
   const cardPending = cardPayments.filter(p => p.payment_status === 'pending').length;
   const ewalletPending = ewalletPayments.filter(p => p.payment_status === 'pending').length;
+  const transferPending = transferPayments.filter(p => p.payment_status === 'pending').length;
 
   const cardCompletedTotal = cardPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total, 0);
   const cardPendingTotal = cardPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total, 0);
 
   const ewalletCompletedTotal = ewalletPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total, 0);
   const ewalletPendingTotal = ewalletPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total, 0);
+
+  const transferCompletedTotal = transferPayments.filter(p => p.payment_status === 'paid').reduce((sum, p) => sum + p.total, 0);
+  const transferPendingTotal = transferPayments.filter(p => p.payment_status === 'pending').reduce((sum, p) => sum + p.total, 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -117,15 +129,26 @@ export default function Payments() {
             <h1 className="text-slate-900 text-[24px] font-bold">Payment Management</h1>
             <p className="text-slate-500 text-[14px] mt-1">Process and track payments by method</p>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search payments..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-slate-900 w-64"
-            />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                getPayments().then(setPayments).catch(() => setPayments([]));
+              }}
+              className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-slate-600 shadow-sm"
+              title="Refresh Data"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search payments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-slate-900 w-64"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -307,6 +330,64 @@ export default function Payments() {
           </div>
         )}
 
+        {activeFilter === 'transfer' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Transfer Total */}
+            <div className="bg-white rounded-2xl p-6 border border-orange-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                  <Landmark className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Total Transfer</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(transferTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-orange-600 text-[12px]">
+                {transferPayments.length} transaksi transfer
+              </p>
+            </div>
+
+            {/* Transfer Completed */}
+            <div className="bg-white rounded-2xl p-6 border border-emerald-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Completed</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(transferCompletedTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-emerald-600 text-[12px]">
+                {transferCompleted} transaksi
+              </p>
+            </div>
+
+            {/* Transfer Pending */}
+            <div className="bg-white rounded-2xl p-6 border border-amber-200 shadow-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                  <Clock3 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[12px]">Pending</p>
+                  <p className="text-slate-950 text-[24px] font-bold">
+                    {formatCurrency(transferPendingTotal)}
+                  </p>
+                </div>
+              </div>
+              <p className="text-amber-600 text-[12px]">
+                {transferPending} transaksi
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Filter Selector - Below Stats */}
         <div className="mb-6">
           <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200 shadow-md">
@@ -343,6 +424,18 @@ export default function Payments() {
             >
               <Smartphone className="w-4 h-4" />
               E-Wallet ({ewalletPayments.length})
+            </button>
+
+            <button
+              onClick={() => setActiveFilter('transfer')}
+              className={`px-5 py-3 rounded-lg transition-all text-[13px] font-medium flex items-center gap-2 ${
+                activeFilter === 'transfer'
+                  ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Landmark className="w-4 h-4" />
+              Transfer ({transferPayments.length})
             </button>
           </div>
         </div>
@@ -403,7 +496,7 @@ export default function Payments() {
                       <div className="flex items-center gap-2">
                         {getMethodIcon(payment.payment_method)}
                         <span className="text-slate-600 text-[14px] capitalize">
-                          {getPaymentCategory(payment.payment_method) === 'card' ? 'Card' : getPaymentCategory(payment.payment_method) === 'e-wallet' ? 'E-Wallet' : payment.payment_method}
+                          {getPaymentCategory(payment.payment_method) === 'card' ? 'Card' : getPaymentCategory(payment.payment_method) === 'e-wallet' ? 'E-Wallet' : getPaymentCategory(payment.payment_method) === 'transfer' ? 'Transfer' : payment.payment_method}
                           <span className="text-slate-400 text-[11px] ml-1">({payment.payment_method})</span>
                         </span>
                       </div>
@@ -464,9 +557,9 @@ export default function Payments() {
             {/* Payment Method Selection */}
             <div className="mb-6">
               <label className="block text-slate-700 text-[13px] font-medium mb-3">
-                Payment Method (Hanya Card & E-Wallet)
+                Payment Method (Card, E-Wallet, & Transfer)
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setSelectedMethod('card')}
                   className={`p-4 rounded-lg border-2 transition-all ${
@@ -495,6 +588,21 @@ export default function Payments() {
                   }`} />
                   <p className="text-slate-900 text-[13px] font-medium">E-Wallet</p>
                   <p className="text-slate-500 text-[11px] mt-1">OVO/GoPay/Dana</p>
+                </button>
+
+                <button
+                  onClick={() => setSelectedMethod('transfer')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    selectedMethod === 'transfer'
+                      ? 'border-orange-500 bg-orange-500/20'
+                      : 'border-slate-200 bg-white hover:border-orange-500/50'
+                  }`}
+                >
+                  <Landmark className={`w-8 h-8 mx-auto mb-2 ${
+                    selectedMethod === 'transfer' ? 'text-orange-400' : 'text-orange-400'
+                  }`} />
+                  <p className="text-slate-900 text-[13px] font-medium">Transfer</p>
+                  <p className="text-slate-500 text-[11px] mt-1">Bank Transfer</p>
                 </button>
               </div>
             </div>

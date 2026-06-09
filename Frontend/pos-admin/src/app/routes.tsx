@@ -11,7 +11,7 @@ import Staff from "./pages/Staff";
 import Payments from "./pages/Payments";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
-import POSDashboard from "../../../Sistem Post Restaurant/src/app/App";
+import POSDashboard from "./pages/pos/POSDashboard";
 
 const dashboardChildren = [
   { index: true, Component: Dashboard },

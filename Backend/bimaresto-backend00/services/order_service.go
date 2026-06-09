@@ -11,6 +11,7 @@ type OrderItemDTO struct {
 	MenuID   int    `json:"menu_id"`
 	Quantity int    `json:"quantity"`
 	Notes    string `json:"notes"`
+	IsPromo  bool   `json:"is_promo"`
 }
 
 type OfflineOrderDTO struct {
@@ -85,13 +86,20 @@ func (s *orderService) CreateOrder(tableID, staffID int, source, clientRefID str
 			return nil, fmt.Errorf("menu %s sedang tidak tersedia", menu.Name)
 		}
 
-		itemSubtotal := menu.Price * float64(i.Quantity)
+		var unitPrice float64
+		if i.IsPromo {
+			unitPrice = 0
+		} else {
+			unitPrice = menu.Price
+		}
+
+		itemSubtotal := unitPrice * float64(i.Quantity)
 		subtotal += itemSubtotal
 
 		items = append(items, models.OrderItem{
 			MenuID:    i.MenuID,
 			Quantity:  i.Quantity,
-			UnitPrice: menu.Price,
+			UnitPrice: unitPrice,
 			Subtotal:  itemSubtotal,
 			Notes:     i.Notes,
 			Status:    "pending",
@@ -107,6 +115,9 @@ func (s *orderService) CreateOrder(tableID, staffID int, source, clientRefID str
 		StaffID:     staffID,
 		OrderSource: source,
 		Status:      "pending",
+		Subtotal:    subtotal,
+		Tax:         tax,
+		ServiceFee:  serviceFee,
 		Total:       subtotal + tax + serviceFee,
 		OrderItems:  items,
 	}
@@ -167,13 +178,19 @@ func (s *orderService) AddItems(orderID int, itemsInput []OrderItemDTO) (*models
 			return nil, fmt.Errorf("menu %s tidak tersedia", m.Name)
 		}
 
-		itemPrice := m.Price
-		itemSubtotal := itemPrice * float64(input.Quantity)
+		var unitPrice float64
+		if input.IsPromo {
+			unitPrice = 0
+		} else {
+			unitPrice = m.Price
+		}
+
+		itemSubtotal := unitPrice * float64(input.Quantity)
 		newOrderItems = append(newOrderItems, models.OrderItem{
 			OrderID:   order.ID,
 			MenuID:    m.ID,
 			Quantity:  input.Quantity,
-			UnitPrice: itemPrice,
+			UnitPrice: unitPrice,
 			Subtotal:  itemSubtotal,
 			Notes:     input.Notes,
 			Status:    "pending",
